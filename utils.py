@@ -5,7 +5,7 @@ import plotly.express as px
 from flask import request
 import base64
 import os
-import gdown
+import requests
 
 # =========================================
 # CURRENT USER
@@ -42,63 +42,38 @@ def get_current_user():
 
 def load_seg_riders(db_name=None):
 
-    base_dir = os.path.dirname(
-        os.path.abspath(__file__)
+    url = (
+        "https://drive.google.com/uc?export=download&id="
+        "1tWHqT-8taxrMedpIbBGqgmFrCqykl86v"
     )
-
-    local_file = os.path.join(
-        base_dir,
-        "allowed_seg_riders.txt"
-    )
-
-    # =========================================
-    # DOWNLOAD TXT FILE
-    # =========================================
 
     try:
 
-        gdown.download(
+        response = requests.get(url)
 
-            id="1tWHqT-8taxrMedpIbBGqgmFrCqykl86v",
-
-            output=local_file,
-
-            quiet=False,
-
-            fuzzy=True
-        )
-
-    except Exception as e:
-
-        print(
-            "SEG riders download fout:",
-            e
-        )
-
-    # =========================================
-    # READ TXT FILE
-    # =========================================
-
-    if not os.path.exists(local_file):
-
-        print("TXT file niet gevonden")
-
-        return []
-
-    with open(local_file, "r", encoding="utf-8") as f:
+        text = response.text
 
         riders = [
 
             line.strip()
 
-            for line in f.readlines()
+            for line in text.splitlines()
 
             if line.strip()
         ]
 
-    print("SEG riders:", riders)
+        print("SEG riders:", riders)
 
-    return riders
+        return riders
+
+    except Exception as e:
+
+        print(
+            "SEG riders fout:",
+            e
+        )
+
+        return []
 
 # =========================================
 # SAFE FLOAT
