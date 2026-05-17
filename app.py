@@ -8,7 +8,11 @@ from tabs.vergelijking import (
     register_callbacks
 )
 
-from tabs.rapportage import rapportage_layout
+from tabs.rapportage import (
+    rapportage_layout,
+    register_rapportage_callbacks
+)
+
 from tabs.worksheet import worksheet_layout
 
 # =========================================
@@ -84,12 +88,18 @@ def render_layout(_):
 
         dcc.Tab(
             label="Vergelijking",
-            value="vergelijking"
+            value="vergelijking",
+            children=[
+                vergelijking_layout()
+            ]
         ),
 
         dcc.Tab(
             label="Rapportage",
-            value="rapportage"
+            value="rapportage",
+            children=[
+                rapportage_layout()
+            ]
         )
     ]
 
@@ -100,7 +110,10 @@ def render_layout(_):
 
             dcc.Tab(
                 label="Worksheet",
-                value="worksheet"
+                value="worksheet",
+                children=[
+                    worksheet_layout()
+                ]
             )
 
         )
@@ -149,44 +162,20 @@ def render_layout(_):
                 id="name",
                 placeholder="Select renner",
                 style={
-                    "marginBottom": "10px"
+                    "marginTop": "10px",
+                    "marginBottom": "20px"
                 }
-            ),
+            )
 
-            # =========================================
-            # TAB CONTENT
-            # =========================================
-
-            html.Div(id="tab-content")
         ]
     )
-
-# =========================================
-# RENDER TAB CONTENT
-# =========================================
-
-@app.callback(
-    Output("tab-content", "children"),
-    Input("main-tabs", "value")
-)
-def render_tab(tab):
-
-    if tab == "vergelijking":
-        return vergelijking_layout()
-
-    elif tab == "rapportage":
-        return rapportage_layout()
-
-    elif tab == "worksheet":
-        return worksheet_layout()
-
-    return html.Div()
 
 # =========================================
 # REGISTER CALLBACKS
 # =========================================
 
 register_callbacks(app)
+register_rapportage_callbacks(app)
 
 # =========================================
 # RUN APP
