@@ -1,10 +1,21 @@
-
 from dash import html, dcc, Input, Output
 import plotly.express as px
 
-from data_loader import load_data, prepare_df
-from utils import scatter
+from data_loader import (
+    load_data,
+    prepare_df,
+    get_database_options
+)
 
+from utils import (
+    scatter,
+    get_current_user,
+    load_seg_riders
+)
+
+# =========================================
+# LAYOUT
+# =========================================
 
 def vergelijking_layout():
 
@@ -40,6 +51,9 @@ def vergelijking_layout():
 
     ])
 
+# =========================================
+# CALLBACKS
+# =========================================
 
 def register_callbacks(app):
 
@@ -49,10 +63,7 @@ def register_callbacks(app):
     )
     def load_databases(_):
 
-        from data_loader import get_database_options
-
         return get_database_options()
-
 
     @app.callback(
         Output("name", "options"),
@@ -67,11 +78,25 @@ def register_callbacks(app):
 
         names = df.iloc[:, -1].unique()
 
+        username = get_current_user()
+
+        # =========================================
+        # SEG FILTER
+        # =========================================
+
+        if username == "SEG":
+
+            allowed_riders = load_seg_riders()
+
+            names = [
+                n for n in names
+                if n in allowed_riders
+            ]
+
         return [
             {"label": n, "value": n}
             for n in names
         ]
-
 
     @app.callback(
         Output("p1", "figure"),
@@ -88,7 +113,9 @@ def register_callbacks(app):
         if not db:
             return [px.scatter()] * 6
 
-        df, best_exp = prepare_df(load_data(db))
+        df, best_exp = prepare_df(
+            load_data(db)
+        )
 
         return (
 
@@ -139,8 +166,7 @@ def register_callbacks(app):
                 name,
                 f"Adjusted FTP * trainingsuren (exp={best_exp})",
                 "Trainingsuren",
-                "Adjusted FTP",
-                show_zscore=True
+                "Adjusted FTP"
             ),
 
             scatter(
@@ -150,7 +176,6 @@ def register_callbacks(app):
                 name,
                 f"Adjusted VO2 * gewicht (exp={best_exp})",
                 "Gewicht",
-                "Adjusted VO2",
-                show_zscore=True
+                "Adjusted VO2"
             ),
         )
