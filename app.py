@@ -69,7 +69,7 @@ def get_current_user():
 app.layout = html.Div(id="main-layout")
 
 # =========================================
-# DYNAMIC TABS BASED ON USER
+# DYNAMIC LAYOUT
 # =========================================
 
 @app.callback(
@@ -84,12 +84,12 @@ def render_layout(_):
 
         dcc.Tab(
             label="Vergelijking",
-            children=vergelijking_layout()
+            value="vergelijking"
         ),
 
         dcc.Tab(
             label="Rapportage",
-            children=rapportage_layout()
+            value="rapportage"
         )
     ]
 
@@ -100,7 +100,7 @@ def render_layout(_):
 
             dcc.Tab(
                 label="Worksheet",
-                children=worksheet_layout()
+                value="worksheet"
             )
 
         )
@@ -132,7 +132,10 @@ def render_layout(_):
             # =========================================
 
             dcc.Tabs(
-                tabs,
+                id="main-tabs",
+                value="vergelijking",
+                children=tabs,
+
                 style={
                     "marginBottom": "10px"
                 }
@@ -148,10 +151,36 @@ def render_layout(_):
                 style={
                     "marginBottom": "10px"
                 }
-            )
+            ),
 
+            # =========================================
+            # TAB CONTENT
+            # =========================================
+
+            html.Div(id="tab-content")
         ]
     )
+
+# =========================================
+# RENDER TAB CONTENT
+# =========================================
+
+@app.callback(
+    Output("tab-content", "children"),
+    Input("main-tabs", "value")
+)
+def render_tab(tab):
+
+    if tab == "vergelijking":
+        return vergelijking_layout()
+
+    elif tab == "rapportage":
+        return rapportage_layout()
+
+    elif tab == "worksheet":
+        return worksheet_layout()
+
+    return html.Div()
 
 # =========================================
 # REGISTER CALLBACKS
