@@ -89,6 +89,10 @@ def parse_duur(x):
             parts = str(x).split(":")
             parts = [float(p) for p in parts]
 
+            # =========================================
+            # HH:MM:SS
+            # =========================================
+
             if len(parts) == 3:
 
                 return (
@@ -97,11 +101,15 @@ def parse_duur(x):
                     parts[2]
                 )
 
+            # =========================================
+            # UREN:MINUTEN
+            # =========================================
+
             elif len(parts) == 2:
 
                 return (
-                    parts[0] * 60 +
-                    parts[1]
+                    parts[0] * 3600 +
+                    parts[1] * 60
                 )
 
         except:
