@@ -90,6 +90,7 @@ def scatter(df, x, y, selected, title, xlabel, ylabel, show_zscore=False):
         title=f"<b>{title}</b>",
         xaxis_title=xlabel,
         yaxis_title=ylabel
+        showlegend=False
     )
 
     return fig
