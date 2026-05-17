@@ -40,36 +40,31 @@ def get_current_user():
 # LOAD SEG RIDERS
 # =========================================
 
-def load_seg_riders(db_name):
-
-    if not db_name:
-        return []
+def load_seg_riders(db_name=None):
 
     base_dir = os.path.dirname(
         os.path.abspath(__file__)
     )
 
-    txt_name = db_name.replace(
-        ".db",
-        ".txt"
-    )
-
     local_file = os.path.join(
         base_dir,
-        txt_name
+        "allowed_seg_riders.txt"
     )
 
     # =========================================
-    # DOWNLOAD TXT FROM GOOGLE DRIVE
+    # DOWNLOAD TXT FILE
     # =========================================
 
     try:
 
-        # Pas eventueel later aan
         gdown.download(
+
             id="1tWHqT-8taxrMedpIbBGqgmFrCqykl86v",
+
             output=local_file,
-            quiet=True,
+
+            quiet=False,
+
             fuzzy=True
         )
 
@@ -81,12 +76,12 @@ def load_seg_riders(db_name):
         )
 
     # =========================================
-    # READ TXT
+    # READ TXT FILE
     # =========================================
 
     if not os.path.exists(local_file):
 
-        print("TXT niet gevonden:", txt_name)
+        print("TXT file niet gevonden")
 
         return []
 
@@ -100,6 +95,8 @@ def load_seg_riders(db_name):
 
             if line.strip()
         ]
+
+    print("SEG riders:", riders)
 
     return riders
 
@@ -131,7 +128,10 @@ def parse_duur(x):
             parts = str(x).split(":")
             parts = [float(p) for p in parts]
 
+            # =========================================
             # HH:MM:SS
+            # =========================================
+
             if len(parts) == 3:
 
                 return (
@@ -140,7 +140,10 @@ def parse_duur(x):
                     parts[2]
                 )
 
+            # =========================================
             # UREN:MINUTEN
+            # =========================================
+
             elif len(parts) == 2:
 
                 return (
@@ -209,9 +212,7 @@ def scatter(
 
     username = get_current_user()
 
-    allowed_riders = load_seg_riders(
-        db_name
-    )
+    allowed_riders = load_seg_riders()
 
     plot_df = df[[x, y, "naam"]].copy()
 
@@ -394,5 +395,103 @@ def scatter(
 
         showlegend=False
     )
+
+    # =========================================
+    # Z-SCORE
+    # =========================================
+
+    if selected:
+
+        sel = plot_df[
+            plot_df["naam"] == selected
+        ]
+
+        if not sel.empty and len(plot_df) > 2:
+
+            x0 = sel.iloc[0][x]
+            y0 = sel.iloc[0][y]
+
+            slope, intercept = np.polyfit(
+                plot_df[x],
+                plot_df[y],
+                1
+            )
+
+            y_trend = (
+                slope * x0 +
+                intercept
+            )
+
+            fig.add_shape(
+
+                type="line",
+
+                x0=x0,
+                y0=y0,
+
+                x1=x0,
+                y1=y_trend,
+
+                line=dict(
+                    color="red",
+                    width=2,
+                    dash="dot"
+                )
+            )
+
+            predicted_all = (
+                slope * plot_df[x] +
+                intercept
+            )
+
+            residuals = (
+                plot_df[y] -
+                predicted_all
+            )
+
+            residual_std = residuals.std()
+
+            if residual_std > 0:
+
+                zscore = (
+                    y0 - y_trend
+                ) / residual_std
+
+                fig.add_annotation(
+
+                    x=x0,
+                    y=y0,
+
+                    text=f"z = {zscore:.2f}",
+
+                    showarrow=False,
+
+                    yshift=18,
+
+                    font=dict(
+                        color="red",
+                        size=13
+                    )
+                )
+
+                if show_zscore:
+
+                    fig.update_layout(
+
+                        title=(
+                            f"<b>{title} "
+                            f"({zscore:+.2f})</b>"
+                        )
+                    )
+
+    # =========================================
+    # FORMAT DUUR AXIS
+    # =========================================
+
+    if x == "duur":
+
+        fig.update_xaxes(
+            tickformat=".1f"
+        )
 
     return fig
