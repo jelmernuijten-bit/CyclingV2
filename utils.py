@@ -191,16 +191,12 @@ def scatter(
     )
 
     # =========================================
-    # ALLOWED RIDERS
+    # SPLIT DATA
     # =========================================
 
     allowed_df = plot_df[
         plot_df["allowed"]
     ]
-
-    # =========================================
-    # HIDDEN RIDERS
-    # =========================================
 
     hidden_df = plot_df[
         ~plot_df["allowed"]
@@ -209,7 +205,7 @@ def scatter(
     fig = px.scatter()
 
     # =========================================
-    # HIDDEN POINTS
+    # HIDDEN RIDERS
     # =========================================
 
     if len(hidden_df) > 0:
@@ -232,7 +228,7 @@ def scatter(
         )
 
     # =========================================
-    # ALLOWED POINTS
+    # ALLOWED RIDERS
     # =========================================
 
     if len(allowed_df) > 0:
@@ -253,8 +249,6 @@ def scatter(
 
             hover_name="naam",
 
-            trendline="ols",
-
             labels={
                 x: xlabel,
                 y: ylabel
@@ -262,7 +256,52 @@ def scatter(
         )
 
         for trace in fig2.data:
+
             fig.add_trace(trace)
+
+    # =========================================
+    # TRENDLINE
+    # =========================================
+
+    trend_df = plot_df.dropna(
+        subset=[x, y]
+    )
+
+    if len(trend_df) > 2:
+
+        slope, intercept = np.polyfit(
+            trend_df[x],
+            trend_df[y],
+            1
+        )
+
+        x_vals = np.array([
+            trend_df[x].min(),
+            trend_df[x].max()
+        ])
+
+        y_vals = slope * x_vals + intercept
+
+        fig.add_scatter(
+
+            x=x_vals,
+            y=y_vals,
+
+            mode="lines",
+
+            line=dict(
+                color="black",
+                width=2
+            ),
+
+            hoverinfo="skip",
+
+            showlegend=False
+        )
+
+    # =========================================
+    # HOVER
+    # =========================================
 
     fig.update_traces(
 
@@ -273,6 +312,10 @@ def scatter(
         f"{xlabel}: %{{x}}<br>" +
         f"{ylabel}: %{{y}}<extra></extra>"
     )
+
+    # =========================================
+    # LAYOUT
+    # =========================================
 
     fig.update_layout(
 
@@ -293,5 +336,103 @@ def scatter(
 
         showlegend=False
     )
+
+    # =========================================
+    # Z-SCORE
+    # =========================================
+
+    if selected:
+
+        sel = plot_df[
+            plot_df["naam"] == selected
+        ]
+
+        if not sel.empty and len(plot_df) > 2:
+
+            x0 = sel.iloc[0][x]
+            y0 = sel.iloc[0][y]
+
+            slope, intercept = np.polyfit(
+                plot_df[x],
+                plot_df[y],
+                1
+            )
+
+            y_trend = (
+                slope * x0 +
+                intercept
+            )
+
+            fig.add_shape(
+
+                type="line",
+
+                x0=x0,
+                y0=y0,
+
+                x1=x0,
+                y1=y_trend,
+
+                line=dict(
+                    color="red",
+                    width=2,
+                    dash="dot"
+                )
+            )
+
+            predicted_all = (
+                slope * plot_df[x] +
+                intercept
+            )
+
+            residuals = (
+                plot_df[y] -
+                predicted_all
+            )
+
+            residual_std = residuals.std()
+
+            if residual_std > 0:
+
+                zscore = (
+                    y0 - y_trend
+                ) / residual_std
+
+                fig.add_annotation(
+
+                    x=x0,
+                    y=y0,
+
+                    text=f"z = {zscore:.2f}",
+
+                    showarrow=False,
+
+                    yshift=18,
+
+                    font=dict(
+                        color="red",
+                        size=13
+                    )
+                )
+
+                if show_zscore:
+
+                    fig.update_layout(
+
+                        title=(
+                            f"<b>{title} "
+                            f"({zscore:+.2f})</b>"
+                        )
+                    )
+
+    # =========================================
+    # FORMAT DUUR AXIS
+    # =========================================
+
+    if x == "duur":
+
+        fig.update_xaxes(
+            tickformat=".1f"
+        )
 
     return fig
