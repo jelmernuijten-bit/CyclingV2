@@ -4,7 +4,6 @@ import plotly.express as px
 
 from flask import request
 import base64
-import os
 import requests
 
 # =========================================
@@ -252,8 +251,9 @@ def scatter(
             mode="markers",
 
             marker=dict(
-                color="#1f77b4",
-                size=8
+                color="gray",
+                size=5,
+                opacity=0.25
             ),
 
             hoverinfo="skip",
@@ -334,12 +334,24 @@ def scatter(
         )
 
     # =========================================
+    # MARKER SIZES
+    # =========================================
+
+    for trace in fig.data:
+
+        if trace.name == "True":
+
+            trace.marker.size = 14
+
+        elif trace.name == "False":
+
+            trace.marker.size = 8
+
+    # =========================================
     # HOVER
     # =========================================
 
     fig.update_traces(
-
-        marker=dict(size=8),
 
         hovertemplate=
         "<b>%{hovertext}</b><br>" +
