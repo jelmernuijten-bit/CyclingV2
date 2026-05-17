@@ -100,4 +100,73 @@ def render_layout(_):
 
             dcc.Tab(
                 label="Worksheet",
+                children=worksheet_layout()
+            )
+
+        )
+
+    return html.Div(
+
+        style={
+            "backgroundColor": "#f4f6f8",
+            "padding": "10px"
+        },
+
+        children=[
+
+            # =========================================
+            # DATABASE DROPDOWN
+            # =========================================
+
+            dcc.Dropdown(
+                id="db",
+                options=[],
+                placeholder="Select database",
+                style={
+                    "marginBottom": "10px"
+                }
+            ),
+
+            # =========================================
+            # TABS
+            # =========================================
+
+            dcc.Tabs(
+                tabs,
+                style={
+                    "marginBottom": "10px"
+                }
+            ),
+
+            # =========================================
+            # RENNER DROPDOWN
+            # =========================================
+
+            dcc.Dropdown(
+                id="name",
+                placeholder="Select renner",
+                style={
+                    "marginBottom": "10px"
+                }
+            )
+
+        ]
+    )
+
+# =========================================
+# REGISTER CALLBACKS
+# =========================================
+
+register_callbacks(app)
+
+# =========================================
+# RUN APP
+# =========================================
+
+if __name__ == "__main__":
+
+    url = "http://localhost:8050/"
+
+    print(f"\nOpen dashboard: {url}\n")
+
     app.run(debug=True)
