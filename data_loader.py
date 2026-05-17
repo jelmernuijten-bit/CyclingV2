@@ -116,7 +116,10 @@ def prepare_df(df):
     df["ftp"] = df.iloc[:, 22].apply(safe_float)
     df["vo2"] = df.iloc[:, 23].apply(safe_float)
 
-    df["duur"] = df.iloc[:, 25].apply(parse_duur)
+    df["duur"] = (
+    df.iloc[:, 25]
+    .apply(parse_duur) / 3600
+).round(1)
 
     df = df.sort_values("duur")
 
