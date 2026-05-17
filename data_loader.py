@@ -55,7 +55,6 @@ def sync_databases_if_needed():
             output=local_db_folder,
             quiet=True,
             use_cookies=False,
-            remaining_ok=True
         )
 
         save_cache(cache)
