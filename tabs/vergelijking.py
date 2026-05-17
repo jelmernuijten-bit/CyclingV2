@@ -86,11 +86,23 @@ def register_callbacks(app):
 
         if username == "SEG":
 
-            allowed_riders = load_seg_riders()
+            allowed_riders = load_seg_riders(
+                db
+            )
+
+            allowed_clean = [
+
+                r.strip().lower()
+
+                for r in allowed_riders
+            ]
 
             names = [
+
                 n for n in names
-                if n in allowed_riders
+
+                if n.strip().lower()
+                in allowed_clean
             ]
 
         return [
@@ -126,7 +138,8 @@ def register_callbacks(app):
                 name,
                 "10s * 20min",
                 "20min",
-                "10s"
+                "10s",
+                db_name=db
             ),
 
             scatter(
@@ -136,7 +149,8 @@ def register_callbacks(app):
                 name,
                 "10s * 20min (w/kg)",
                 "20min (w/kg)",
-                "10s (w/kg)"
+                "10s (w/kg)",
+                db_name=db
             ),
 
             scatter(
@@ -146,7 +160,8 @@ def register_callbacks(app):
                 name,
                 "1min * 1min na 21kJ",
                 "1min",
-                "1min na 21kJ"
+                "1min na 21kJ",
+                db_name=db
             ),
 
             scatter(
@@ -156,7 +171,8 @@ def register_callbacks(app):
                 name,
                 "1min * 1min na 21kJ (w/kg)",
                 "1min (w/kg)",
-                "1min na 21kJ (w/kg)"
+                "1min na 21kJ (w/kg)",
+                db_name=db
             ),
 
             scatter(
@@ -166,7 +182,8 @@ def register_callbacks(app):
                 name,
                 f"Adjusted FTP * trainingsuren (exp={best_exp})",
                 "Trainingsuren",
-                "Adjusted FTP"
+                "Adjusted FTP",
+                db_name=db
             ),
 
             scatter(
@@ -176,6 +193,7 @@ def register_callbacks(app):
                 name,
                 f"Adjusted VO2 * gewicht (exp={best_exp})",
                 "Gewicht",
-                "Adjusted VO2"
+                "Adjusted VO2",
+                db_name=db
             ),
         )
