@@ -77,14 +77,18 @@ def scatter(df, x, y, selected, title, xlabel, ylabel, show_zscore=False):
 
     plot_df["highlight"] = plot_df["naam"] == selected
 
-    fig = px.scatter(
-        plot_df,
-        x=x,
-        y=y,
-        color="highlight",
-        hover_name="naam",
-        trendline="ols"
-    )
+fig = px.scatter(
+    plot_df,
+    x=x,
+    y=y,
+    color="highlight",
+    hover_name="naam",
+    trendline="ols",
+    labels={
+        x: xlabel,
+        y: ylabel
+    }
+)
 
     fig.update_layout(
         title=f"<b>{title}</b>",
