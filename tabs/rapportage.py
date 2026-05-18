@@ -15,7 +15,7 @@ DB_PATH = "Junior_1e_jaars_man.db"
 
 def load_data():
     conn = sqlite3.connect(DB_PATH)
-    df = pd.read_sql_query("SELECT * FROM riders", conn)
+    df = pd.read_sql_query("SELECT * FROM renners", conn)
     conn.close()
     return df
 
@@ -52,8 +52,8 @@ if df.empty:
 # RIDER SELECTIE
 # --------------------------------------------------
 
-riders = sorted(df["naam"].dropna().unique())
-selected_rider = st.selectbox("Selecteer renner", riders)
+renners = sorted(df["naam"].dropna().unique())
+selected_rider = st.selectbox("Selecteer renner", renners)
 
 rider_df = df[df["naam"] == selected_rider]
 
