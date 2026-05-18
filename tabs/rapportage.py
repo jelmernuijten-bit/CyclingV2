@@ -2,10 +2,7 @@ from dash import html, dcc, Input, Output
 import plotly.graph_objects as go
 import plotly.express as px
 
-from data_loader import (
-    load_data,
-    prepare_df
-)
+from data_loader import load_data
 
 # =========================================
 # LAYOUT
@@ -39,19 +36,6 @@ def rapportage_layout():
         ),
 
         # =========================================
-        # LOAD STATUS
-        # =========================================
-
-        html.Div(
-            id="load-status",
-
-            style={
-                "marginTop": "20px",
-                "marginBottom": "20px"
-            }
-        ),
-
-        # =========================================
         # ANALYSIS
         # =========================================
 
@@ -78,7 +62,6 @@ def register_rapportage_callbacks(app):
 
         Output("rapport-kpis", "children"),
         Output("power-profile", "figure"),
-        Output("load-status", "children"),
         Output("analysis-text", "children"),
 
         Input("db", "value"),
@@ -86,16 +69,11 @@ def register_rapportage_callbacks(app):
     )
     def update_rapportage(db, name):
 
-        # =========================================
-        # EMPTY STATE
-        # =========================================
-
         if not db or not name:
 
             return (
                 [],
                 go.Figure(),
-                "",
                 ""
             )
 
@@ -127,7 +105,6 @@ def register_rapportage_callbacks(app):
                     name_col = col
                     break
 
-            # fallback = laatste kolom
             if name_col is None:
                 name_col = df.columns[-1]
 
@@ -144,14 +121,13 @@ def register_rapportage_callbacks(app):
                 return (
                     [],
                     go.Figure(),
-                    "",
                     ""
                 )
 
             rider = rider.iloc[0]
 
             # =========================================
-            # SAFE COLUMN HELPER
+            # SAFE VALUE HELPER
             # =========================================
 
             def get_col(options, default=0):
@@ -161,9 +137,6 @@ def register_rapportage_callbacks(app):
                     if col in rider.index:
 
                         value = rider[col]
-
-                        if value is None:
-                            return default
 
                         try:
                             return float(value)
@@ -203,24 +176,24 @@ def register_rapportage_callbacks(app):
                 2
             ) if gewicht else 0
 
-            vo2 = round(
+            sprint = round(
 
                 get_col([
-                    "vo2_adj",
-                    "vo2"
+                    "okj_10s",
+                    "v5"
                 ]),
 
-                1
+                0
             )
 
-            duur = round(
+            twintig = round(
 
                 get_col([
-                    "duur",
-                    "hours"
+                    "okj_20m",
+                    "v2"
                 ]),
 
-                1
+                0
             )
 
             # =========================================
@@ -270,9 +243,9 @@ def register_rapportage_callbacks(app):
 
                 card("FTP/kg", ftp_kg),
 
-                card("VO2", vo2),
+                card("10s", f"{sprint} W"),
 
-                card("Trainingsuren", duur)
+                card("20m", f"{twintig} W")
             ]
 
             # =========================================
@@ -346,81 +319,14 @@ def register_rapportage_callbacks(app):
             )
 
             # =========================================
-            # TRAININGSSTATUS
+            # ANALYSE
             # =========================================
-
-            kj7 = get_col([
-                "kj7_20m",
-                "kj7"
-            ], 0)
-
-            kj28 = get_col([
-                "kj28_20m",
-                "kj28"
-            ], 1)
-
-            fatigue = round(
-                kj7 / kj28,
-                2
-            ) if kj28 else 0
-
-            if fatigue < 0.8:
-
-                status = "Fris"
-                color = "green"
-
-            elif fatigue < 1.1:
-
-                status = "Normaal"
-                color = "orange"
-
-            else:
-
-                status = "Vermoeid"
-                color = "red"
-
-            load_div = html.Div(
-
-                [
-
-                    html.H3(
-                        "Trainingsstatus"
-                    ),
-
-                    html.Div(
-
-                        f"{status} (ratio: {fatigue})",
-
-                        style={
-                            "fontSize": "24px",
-                            "fontWeight": "bold",
-                            "color": color
-                        }
-                    )
-                ],
-
-                style={
-                    "backgroundColor": "white",
-                    "padding": "20px",
-                    "borderRadius": "10px",
-                    "boxShadow": "0 1px 4px rgba(0,0,0,0.1)"
-                }
-            )
-
-            # =========================================
-            # AUTOMATISCHE ANALYSE
-            # =========================================
-
-            sprint = get_col([
-                "v5_kg",
-                "okj_10s_kg"
-            ], 0)
 
             if ftp_kg > 5.5:
 
                 profiel = "Klimmer"
 
-            elif sprint > 18:
+            elif sprint > 1400:
 
                 profiel = "Sprinter"
 
@@ -444,12 +350,9 @@ def register_rapportage_callbacks(app):
                     Deze renner heeft een
                     {profiel.lower()} profiel.
 
-                    FTP/kg bedraagt {ftp_kg},
-                    met een VO2 score van {vo2}.
-
-                    De huidige trainingsstatus
-                    wordt beoordeeld als:
-                    {status.lower()}.
+                    FTP/kg bedraagt {ftp_kg}.
+                    Sprintvermogen bedraagt {sprint} watt.
+                    20 minuten vermogen bedraagt {twintig} watt.
                     """
                 )
             ])
@@ -457,18 +360,15 @@ def register_rapportage_callbacks(app):
             return (
                 kpis,
                 fig,
-                load_div,
                 analysis
             )
 
         except Exception as e:
 
-            print("RAPPORTAGE ERROR:")
             print(e)
 
             return (
                 [],
                 px.scatter(),
-                "",
                 str(e)
             )
