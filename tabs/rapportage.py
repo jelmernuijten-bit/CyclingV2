@@ -282,10 +282,10 @@ def register_rapportage_callbacks(app):
                     "naam": "7kj",
                     "kleur": "#e63946",
                     "cols": [
-                        "7kj_10s",
-                        "7kj_1min",
-                        "7kj_5min",
-                        "7kj_20m"
+                        "kj7_10s",
+                        "kj7_1m",
+                        "kj7_5m",
+                        "kj7_20m"
                     ]
                 },
 
@@ -293,10 +293,10 @@ def register_rapportage_callbacks(app):
                     "naam": "14kj",
                     "kleur": "#457b9d",
                     "cols": [
-                        "14kj_10s",
-                        "14kj_1min",
-                        "14kj_5min",
-                        "14kj_20m"
+                        "kj14_10s",
+                        "kj14_1m",
+                        "kj14_5m",
+                        "kj14_20m"
                     ]
                 },
 
@@ -304,10 +304,10 @@ def register_rapportage_callbacks(app):
                     "naam": "21kj",
                     "kleur": "#2a9d8f",
                     "cols": [
-                        "21kj_10s",
-                        "21kj_1min",
-                        "21kj_5min",
-                        "21kj_20m"
+                        "kj21_10s",
+                        "kj21_1m",
+                        "kj21_5m",
+                        "kj21_20m"
                     ]
                 },
 
@@ -315,10 +315,10 @@ def register_rapportage_callbacks(app):
                     "naam": "28kj",
                     "kleur": "#f4a261",
                     "cols": [
-                        "28kj_10s",
-                        "28kj_1min",
-                        "28kj_5min",
-                        "28kj_20m"
+                        "kj28_10s",
+                        "kj28_1m",
+                        "kj28_5m",
+                        "kj28_20m"
                     ]
                 }
             ]
@@ -347,12 +347,12 @@ def register_rapportage_callbacks(app):
                         mode="lines+markers",
 
                         line={
-                            "width": 2,
+                            "width": 1.5,
                             "color": lijn["kleur"]
                         },
 
                         marker={
-                            "size": 6
+                            "size": 5
                         },
 
                         name=lijn["naam"]
@@ -371,12 +371,21 @@ def register_rapportage_callbacks(app):
 
                 plot_bgcolor="white",
 
+                hovermode="x unified",
+
                 legend={
                     "orientation": "h",
                     "yanchor": "bottom",
                     "y": 1.02,
                     "xanchor": "right",
                     "x": 1
+                },
+
+                margin={
+                    "l": 40,
+                    "r": 40,
+                    "t": 80,
+                    "b": 40
                 }
             )
 
