@@ -6,5 +6,3 @@ dash-auth
 gdown
 statsmodels
 gunicorn
-streamlit
-matplotlib
