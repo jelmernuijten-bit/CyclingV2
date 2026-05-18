@@ -151,13 +151,6 @@ def register_rapportage_callbacks(app):
             rider = rider.iloc[0]
 
             # =========================================
-            # DEBUG
-            # =========================================
-
-            print("COLUMNS:")
-            print(df.columns.tolist())
-
-            # =========================================
             # SAFE COLUMN HELPER
             # =========================================
 
@@ -172,7 +165,11 @@ def register_rapportage_callbacks(app):
                         if value is None:
                             return default
 
-                        return value
+                        try:
+                            return float(value)
+
+                        except:
+                            return default
 
                 return default
 
