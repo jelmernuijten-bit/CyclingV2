@@ -141,6 +141,18 @@ def render_layout(_):
             ),
 
             # =========================================
+            # RENNER DROPDOWN
+            # =========================================
+
+            dcc.Dropdown(
+                id="name",
+                placeholder="Select renner",
+                style={
+                    "marginBottom": "20px"
+                }
+            ),
+
+            # =========================================
             # TABS
             # =========================================
 
@@ -152,21 +164,7 @@ def render_layout(_):
                 style={
                     "marginBottom": "10px"
                 }
-            ),
-
-            # =========================================
-            # RENNER DROPDOWN
-            # =========================================
-
-            dcc.Dropdown(
-                id="name",
-                placeholder="Select renner",
-                style={
-                    "marginTop": "10px",
-                    "marginBottom": "20px"
-                }
             )
-
         ]
     )
 
