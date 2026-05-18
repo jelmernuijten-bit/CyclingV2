@@ -1,5 +1,6 @@
 from dash import html, dcc, Input, Output
 import plotly.graph_objects as go
+import plotly.express as px
 
 from data_loader import (
     load_data,
@@ -98,83 +99,305 @@ def register_rapportage_callbacks(app):
                 ""
             )
 
-        # =========================================
-        # LOAD DATA
-        # =========================================
+        try:
 
-        df, best_exp = prepare_df(
-            load_data(db)
-        )
+            # =========================================
+            # LOAD DATA
+            # =========================================
 
-        rider = df[
-            df.iloc[:, -1] == name
-        ]
+            df = load_data(db)
 
-        if rider.empty:
+            # =========================================
+            # FIND NAME COLUMN
+            # =========================================
 
-            return (
-                [],
-                go.Figure(),
-                "",
-                ""
+            possible_name_cols = [
+
+                "naam",
+                "name",
+                "renner",
+                "rider"
+            ]
+
+            name_col = None
+
+            for col in possible_name_cols:
+
+                if col in df.columns:
+                    name_col = col
+                    break
+
+            # fallback = laatste kolom
+            if name_col is None:
+                name_col = df.columns[-1]
+
+            # =========================================
+            # SELECT RIDER
+            # =========================================
+
+            rider = df[
+                df[name_col] == name
+            ]
+
+            if rider.empty:
+
+                return (
+                    [],
+                    go.Figure(),
+                    "",
+                    ""
+                )
+
+            rider = rider.iloc[0]
+
+            # =========================================
+            # DEBUG
+            # =========================================
+
+            print("COLUMNS:")
+            print(df.columns.tolist())
+
+            # =========================================
+            # SAFE COLUMN HELPER
+            # =========================================
+
+            def get_col(options, default=0):
+
+                for col in options:
+
+                    if col in rider.index:
+
+                        value = rider[col]
+
+                        if value is None:
+                            return default
+
+                        return value
+
+                return default
+
+            # =========================================
+            # KPI VALUES
+            # =========================================
+
+            ftp = round(
+
+                get_col([
+                    "mftp",
+                    "ftp",
+                    "ftp_adj"
+                ]),
+
+                1
             )
 
-        rider = rider.iloc[0]
+            gewicht = round(
 
-        # =========================================
-        # KPI VALUES
-        # =========================================
+                get_col([
+                    "gewicht",
+                    "weight"
+                ]),
 
-        ftp = round(
-            rider.get("mftp", 0),
-            1
-        )
+                1
+            )
 
-        gewicht = round(
-            rider.get("gewicht", 0),
-            1
-        )
+            ftp_kg = round(
+                ftp / gewicht,
+                2
+            ) if gewicht else 0
 
-        ftp_kg = round(
-            ftp / gewicht,
-            2
-        ) if gewicht else 0
+            vo2 = round(
 
-        vo2 = round(
-            rider.get("vo2_adj", 0),
-            1
-        )
+                get_col([
+                    "vo2_adj",
+                    "vo2"
+                ]),
 
-        duur = round(
-            rider.get("duur", 0),
-            1
-        )
+                1
+            )
 
-        # =========================================
-        # KPI CARD HELPER
-        # =========================================
+            duur = round(
 
-        def card(title, value):
+                get_col([
+                    "duur",
+                    "hours"
+                ]),
 
-            return html.Div(
+                1
+            )
+
+            # =========================================
+            # KPI CARD HELPER
+            # =========================================
+
+            def card(title, value):
+
+                return html.Div(
+
+                    [
+
+                        html.Div(
+                            title,
+
+                            style={
+                                "fontSize": "14px",
+                                "color": "#666"
+                            }
+                        ),
+
+                        html.Div(
+                            str(value),
+
+                            style={
+                                "fontSize": "28px",
+                                "fontWeight": "bold"
+                            }
+                        )
+                    ],
+
+                    style={
+                        "backgroundColor": "white",
+                        "padding": "20px",
+                        "borderRadius": "10px",
+                        "boxShadow": "0 1px 4px rgba(0,0,0,0.1)"
+                    }
+                )
+
+            # =========================================
+            # KPI CARDS
+            # =========================================
+
+            kpis = [
+
+                card("FTP", f"{ftp} W"),
+
+                card("FTP/kg", ftp_kg),
+
+                card("VO2", vo2),
+
+                card("Trainingsuren", duur)
+            ]
+
+            # =========================================
+            # POWER PROFILE
+            # =========================================
+
+            labels = [
+                "10s",
+                "1m",
+                "5m",
+                "20m"
+            ]
+
+            values = [
+
+                get_col([
+                    "okj_10s",
+                    "v5"
+                ]),
+
+                get_col([
+                    "okj_1m",
+                    "v3"
+                ]),
+
+                get_col([
+                    "okj_5m",
+                    "v1"
+                ]),
+
+                get_col([
+                    "okj_20m",
+                    "v2"
+                ])
+            ]
+
+            fig = go.Figure()
+
+            fig.add_trace(
+
+                go.Scatter(
+
+                    x=labels,
+                    y=values,
+
+                    mode="lines+markers",
+
+                    line={
+                        "width": 4
+                    },
+
+                    marker={
+                        "size": 10
+                    },
+
+                    name=name
+                )
+            )
+
+            fig.update_layout(
+
+                title="Power Profile",
+
+                template="plotly_white",
+
+                height=500,
+
+                paper_bgcolor="#f4f6f8",
+
+                plot_bgcolor="white"
+            )
+
+            # =========================================
+            # TRAININGSSTATUS
+            # =========================================
+
+            kj7 = get_col([
+                "kj7_20m",
+                "kj7"
+            ], 0)
+
+            kj28 = get_col([
+                "kj28_20m",
+                "kj28"
+            ], 1)
+
+            fatigue = round(
+                kj7 / kj28,
+                2
+            ) if kj28 else 0
+
+            if fatigue < 0.8:
+
+                status = "Fris"
+                color = "green"
+
+            elif fatigue < 1.1:
+
+                status = "Normaal"
+                color = "orange"
+
+            else:
+
+                status = "Vermoeid"
+                color = "red"
+
+            load_div = html.Div(
 
                 [
 
-                    html.Div(
-                        title,
-
-                        style={
-                            "fontSize": "14px",
-                            "color": "#666"
-                        }
+                    html.H3(
+                        "Trainingsstatus"
                     ),
 
                     html.Div(
-                        str(value),
+
+                        f"{status} (ratio: {fatigue})",
 
                         style={
-                            "fontSize": "28px",
-                            "fontWeight": "bold"
+                            "fontSize": "24px",
+                            "fontWeight": "bold",
+                            "color": color
                         }
                     )
                 ],
@@ -187,177 +410,68 @@ def register_rapportage_callbacks(app):
                 }
             )
 
-        # =========================================
-        # KPI CARDS
-        # =========================================
+            # =========================================
+            # AUTOMATISCHE ANALYSE
+            # =========================================
 
-        kpis = [
+            sprint = get_col([
+                "v5_kg",
+                "okj_10s_kg"
+            ], 0)
 
-            card("FTP", f"{ftp} W"),
+            if ftp_kg > 5.5:
 
-            card("FTP/kg", ftp_kg),
+                profiel = "Klimmer"
 
-            card("VO2", vo2),
+            elif sprint > 18:
 
-            card("Trainingsuren", duur)
-        ]
+                profiel = "Sprinter"
 
-        # =========================================
-        # POWER PROFILE
-        # =========================================
+            elif ftp_kg > 4.8:
 
-        labels = [
-            "10s",
-            "1m",
-            "5m",
-            "20m"
-        ]
+                profiel = "Allrounder"
 
-        values = [
+            else:
 
-            rider.get("v5", 0),
-            rider.get("v3", 0),
-            rider.get("v1", 0),
-            rider.get("v2", 0)
-        ]
+                profiel = "Ontwikkelende renner"
 
-        fig = go.Figure()
-
-        fig.add_trace(
-
-            go.Scatter(
-
-                x=labels,
-                y=values,
-
-                mode="lines+markers",
-
-                line={
-                    "width": 4
-                },
-
-                marker={
-                    "size": 10
-                },
-
-                name=name
-            )
-        )
-
-        fig.update_layout(
-
-            title="Power Profile",
-
-            template="plotly_white",
-
-            height=500,
-
-            paper_bgcolor="#f4f6f8",
-
-            plot_bgcolor="white"
-        )
-
-        # =========================================
-        # TRAININGSSTATUS
-        # =========================================
-
-        kj7 = rider.get("kj7_20m", 0)
-
-        kj28 = rider.get("kj28_20m", 1)
-
-        fatigue = round(
-            kj7 / kj28,
-            2
-        )
-
-        if fatigue < 0.8:
-
-            status = "Fris"
-            color = "green"
-
-        elif fatigue < 1.1:
-
-            status = "Normaal"
-            color = "orange"
-
-        else:
-
-            status = "Vermoeid"
-            color = "red"
-
-        load_div = html.Div(
-
-            [
+            analysis = html.Div([
 
                 html.H3(
-                    "Trainingsstatus"
+                    "Automatische analyse"
                 ),
 
-                html.Div(
+                html.P(
 
-                    f"{status} (ratio: {fatigue})",
+                    f"""
+                    Deze renner heeft een
+                    {profiel.lower()} profiel.
 
-                    style={
-                        "fontSize": "24px",
-                        "fontWeight": "bold",
-                        "color": color
-                    }
+                    FTP/kg bedraagt {ftp_kg},
+                    met een VO2 score van {vo2}.
+
+                    De huidige trainingsstatus
+                    wordt beoordeeld als:
+                    {status.lower()}.
+                    """
                 )
-            ],
+            ])
 
-            style={
-                "backgroundColor": "white",
-                "padding": "20px",
-                "borderRadius": "10px",
-                "boxShadow": "0 1px 4px rgba(0,0,0,0.1)"
-            }
-        )
-
-        # =========================================
-        # AUTOMATISCHE ANALYSE
-        # =========================================
-
-        if ftp_kg > 5.5:
-
-            profiel = "Klimmer"
-
-        elif rider.get("v5_kg", 0) > 18:
-
-            profiel = "Sprinter"
-
-        elif ftp_kg > 4.8:
-
-            profiel = "Allrounder"
-
-        else:
-
-            profiel = "Ontwikkelende renner"
-
-        analysis = html.Div([
-
-            html.H3(
-                "Automatische analyse"
-            ),
-
-            html.P(
-
-                f"""
-                Deze renner heeft een
-                {profiel.lower()} profiel.
-
-                FTP/kg bedraagt {ftp_kg},
-                met een VO2 score van {vo2}.
-
-                De huidige trainingsstatus
-                wordt beoordeeld als:
-                {status.lower()}.
-                """
+            return (
+                kpis,
+                fig,
+                load_div,
+                analysis
             )
-        ])
 
-        return (
-            kpis,
-            fig,
-            load_div,
-            analysis
-        )
+        except Exception as e:
+
+            print("RAPPORTAGE ERROR:")
+            print(e)
+
+            return (
+                [],
+                px.scatter(),
+                "",
+                str(e)
+            )
