@@ -164,5 +164,3 @@ st.pyplot(fig)
 st.subheader("Ruwe data")
 
 st.dataframe(rider_df)
-
-```
