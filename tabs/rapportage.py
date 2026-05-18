@@ -188,6 +188,26 @@ def register_rapportage_callbacks(app):
                 0
             ))
 
+            een_min = int(round(
+
+                get_col([
+                    "okj_1min",
+                    "v3"
+                ]),
+
+                0
+            ))
+
+            vijf_min = int(round(
+
+                get_col([
+                    "okj_5min",
+                    "v1"
+                ]),
+
+                0
+            ))
+
             twintig = int(round(
 
                 get_col([
@@ -197,6 +217,199 @@ def register_rapportage_callbacks(app):
 
                 0
             ))
+
+            # =========================================
+            # FATIGUE DATA
+            # =========================================
+
+            kj28_10s = get_col([
+                "kj28_10s"
+            ])
+
+            kj28_5m = get_col([
+                "kj28_5m"
+            ])
+
+            kj28_20m = get_col([
+                "kj28_20m"
+            ])
+
+            # =========================================
+            # FATIGUE METRICS
+            # =========================================
+
+            fatigue_5m = 0
+
+            if vijf_min > 0:
+
+                fatigue_5m = round(
+
+                    (
+                        (vijf_min - kj28_5m)
+                        / vijf_min
+                    ) * 100,
+
+                    1
+                )
+
+            sprint_decay = 0
+
+            if sprint > 0:
+
+                sprint_decay = round(
+
+                    (
+                        (sprint - kj28_10s)
+                        / sprint
+                    ) * 100,
+
+                    1
+                )
+
+            # =========================================
+            # HOOFDPROFIEL
+            # =========================================
+
+            if (
+
+                ftp_kg >= 5.8
+                and vijf_min >= 500
+                and gewicht <= 70
+
+            ):
+
+                hoofdprofiel = "Climber"
+
+            elif (
+
+                sprint >= 1600
+                and ftp_kg < 4.8
+
+            ):
+
+                hoofdprofiel = "Sprinter"
+
+            elif (
+
+                ftp >= 390
+                and fatigue_5m <= 6
+
+            ):
+
+                hoofdprofiel = "Time Trialist"
+
+            elif (
+
+                sprint >= 1400
+                and ftp_kg >= 4.8
+
+            ):
+
+                hoofdprofiel = "Classics Rider"
+
+            elif (
+
+                vijf_min >= 520
+                and een_min >= 700
+
+            ):
+
+                hoofdprofiel = "Puncheur"
+
+            elif (
+
+                ftp >= 360
+                and fatigue_5m <= 8
+
+            ):
+
+                hoofdprofiel = "Diesel"
+
+            else:
+
+                hoofdprofiel = "Developing Rider"
+
+            # =========================================
+            # SUBTYPES
+            # =========================================
+
+            subtypes = []
+
+            # Fatigue Resistant
+
+            if fatigue_5m <= 5:
+
+                subtypes.append(
+                    "Fatigue Resistant"
+                )
+
+            # Anaerobic
+
+            if (
+
+                sprint >= 1500
+                and een_min >= 750
+
+            ):
+
+                subtypes.append(
+                    "Anaerobic"
+                )
+
+            # Endurance
+
+            if kj28_20m >= 360:
+
+                subtypes.append(
+                    "Endurance"
+                )
+
+            # Explosive
+
+            if (
+
+                sprint >= 1450
+                and vijf_min >= 500
+
+            ):
+
+                subtypes.append(
+                    "Explosive"
+                )
+
+            # Lightweight
+
+            if gewicht <= 68:
+
+                subtypes.append(
+                    "Lightweight"
+                )
+
+            # Durable
+
+            if sprint_decay <= 7:
+
+                subtypes.append(
+                    "Durable"
+                )
+
+            # =========================================
+            # SUBTYPE STRING
+            # =========================================
+
+            if len(subtypes) > 0:
+
+                subtype = " / ".join(subtypes)
+
+            else:
+
+                subtype = "Balanced"
+
+            # =========================================
+            # FINALE PROFIEL
+            # =========================================
+
+            profiel = f"{subtype} {hoofdprofiel}"
 
             # =========================================
             # KPI CARD HELPER
@@ -395,22 +608,6 @@ def register_rapportage_callbacks(app):
             # ANALYSE
             # =========================================
 
-            if ftp_kg > 5.5:
-
-                profiel = "Klimmer"
-
-            elif sprint > 1400:
-
-                profiel = "Sprinter"
-
-            elif ftp_kg > 4.8:
-
-                profiel = "Allrounder"
-
-            else:
-
-                profiel = "Ontwikkelende renner"
-
             analysis = html.Div([
 
                 html.H3(
@@ -421,11 +618,14 @@ def register_rapportage_callbacks(app):
 
                     f"""
                     Deze renner heeft een
-                    {profiel.lower()} profiel.
+                    {profiel} profiel.
 
                     FTP/kg bedraagt {ftp_kg:.2f}.
                     Sprintvermogen bedraagt {sprint} watt.
                     20 minuten vermogen bedraagt {twintig} watt.
+
+                    Vermogensverlies op 5 minuten na 28kj bedraagt
+                    {fatigue_5m}%.
                     """
                 )
             ])
