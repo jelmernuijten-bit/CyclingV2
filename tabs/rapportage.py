@@ -1,374 +1,171 @@
-from dash import html, dcc, Input, Output
-import plotly.graph_objects as go
-import plotly.express as px
+# rapportage.py
 
-from data_loader import load_data
+```python
+import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+import sqlite3
 
-# =========================================
-# LAYOUT
-# =========================================
 
-def rapportage_layout():
+# --------------------------------------------------
+# DATABASE
+# --------------------------------------------------
 
-    return html.Div([
+DB_PATH = "Junior_1e_jaars_man.db"
 
-        # =========================================
-        # KPI CARDS
-        # =========================================
 
-        html.Div(
-            id="rapport-kpis",
+@st.cache_data
 
-            style={
-                "display": "grid",
-                "gridTemplateColumns": "repeat(4, 1fr)",
-                "gap": "15px",
-                "marginBottom": "20px"
-            }
-        ),
+def load_data():
+    conn = sqlite3.connect(DB_PATH)
+    df = pd.read_sql_query("SELECT * FROM riders", conn)
+    conn.close()
+    return df
 
-        # =========================================
-        # POWER PROFILE
-        # =========================================
 
-        dcc.Graph(
-            id="power-profile"
-        ),
+# --------------------------------------------------
+# HELPERS
+# --------------------------------------------------
 
-        # =========================================
-        # ANALYSIS
-        # =========================================
 
-        html.Div(
-            id="analysis-text",
+def get_col(row, possible_cols, default=None):
+    for col in possible_cols:
+        if col in row.index:
+            value = row[col]
+            if pd.notna(value):
+                return value
+    return default
 
-            style={
-                "padding": "20px",
-                "backgroundColor": "white",
-                "borderRadius": "10px",
-                "boxShadow": "0 1px 4px rgba(0,0,0,0.1)"
-            }
-        )
 
-    ])
+# --------------------------------------------------
+# LOAD DATA
+# --------------------------------------------------
 
-# =========================================
-# CALLBACKS
-# =========================================
 
-def register_rapportage_callbacks(app):
+df = load_data()
 
-    @app.callback(
+st.title("Rapportage")
 
-        Output("rapport-kpis", "children"),
-        Output("power-profile", "figure"),
-        Output("analysis-text", "children"),
+if df.empty:
+    st.warning("Geen data gevonden")
+    st.stop()
 
-        Input("db", "value"),
-        Input("name", "value")
+
+# --------------------------------------------------
+# RIDER SELECTIE
+# --------------------------------------------------
+
+riders = sorted(df["naam"].dropna().unique())
+selected_rider = st.selectbox("Selecteer renner", riders)
+
+rider_df = df[df["naam"] == selected_rider]
+
+if rider_df.empty:
+    st.warning("Geen data voor deze renner")
+    st.stop()
+
+
+# Beste test kiezen
+if "mftp" in rider_df.columns:
+    rider = rider_df.sort_values("mftp", ascending=False).iloc[0]
+else:
+    rider = rider_df.iloc[0]
+
+
+# --------------------------------------------------
+# KPI'S
+# --------------------------------------------------
+
+st.subheader("KPI's")
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.metric(
+        "mFTP",
+        get_col(rider, ["mftp", "ftp"], "-")
     )
-    def update_rapportage(db, name):
 
-        if not db or not name:
+with col2:
+    st.metric(
+        "VO2",
+        get_col(rider, ["vo2", "vo2max"], "-")
+    )
 
-            return (
-                [],
-                go.Figure(),
-                ""
-            )
+with col3:
+    st.metric(
+        "1 min",
+        get_col(rider, ["okj_1min", "okj_1m"], "-")
+    )
 
-        try:
+with col4:
+    st.metric(
+        "5 min",
+        get_col(rider, ["okj_5min", "okj_5m"], "-")
+    )
 
-            # =========================================
-            # LOAD DATA
-            # =========================================
 
-            df = load_data(db)
+# --------------------------------------------------
+# POWER PROFILE
+# --------------------------------------------------
 
-            # =========================================
-            # FIND NAME COLUMN
-            # =========================================
+st.subheader("Power Profile")
 
-            possible_name_cols = [
+x_labels = ["1 min", "5 min"]
+x = [1, 5]
 
-                "naam",
-                "name",
-                "renner",
-                "rider"
-            ]
+okj_values = [
+    get_col(rider, ["okj_1min", "okj_1m"]),
+    get_col(rider, ["okj_5min", "okj_5m"]),
+]
 
-            name_col = None
+kj7_values = [
+    get_col(rider, ["7kj_1min", "7kj_1m"]),
+    get_col(rider, ["7kj_5min", "7kj_5m"]),
+]
 
-            for col in possible_name_cols:
+kj21_values = [
+    get_col(rider, ["21kj_1min", "21kj_1m"]),
+    get_col(rider, ["21kj_5min", "21kj_5m"]),
+]
 
-                if col in df.columns:
-                    name_col = col
-                    break
+kj28_values = [
+    get_col(rider, ["28kj_1min", "28kj_1m"]),
+    get_col(rider, ["28kj_5min", "28kj_5m"]),
+]
 
-            if name_col is None:
-                name_col = df.columns[-1]
+fig, ax = plt.subplots(figsize=(8, 5))
 
-            # =========================================
-            # SELECT RIDER
-            # =========================================
 
-            rider = df[
-                df[name_col] == name
-            ]
+# Plot helper
 
-            if rider.empty:
+def safe_plot(values, label):
+    if any(v is not None for v in values):
+        ax.plot(x, values, marker="o", linewidth=2, label=label)
 
-                return (
-                    [],
-                    go.Figure(),
-                    ""
-                )
 
-            rider = rider.iloc[0]
+safe_plot(okj_values, "OKJ")
+safe_plot(kj7_values, "7 KJ")
+safe_plot(kj21_values, "21 KJ")
+safe_plot(kj28_values, "28 KJ")
 
-            # =========================================
-            # SAFE VALUE HELPER
-            # =========================================
 
-            def get_col(options, default=0):
+ax.set_xticks(x)
+ax.set_xticklabels(x_labels)
+ax.set_ylabel("W/kg")
+ax.set_title("Power Profile")
+ax.grid(True, alpha=0.3)
+ax.legend()
 
-                for col in options:
+st.pyplot(fig)
 
-                    if col in rider.index:
 
-                        value = rider[col]
+# --------------------------------------------------
+# DATA TABEL
+# --------------------------------------------------
 
-                        try:
-                            return float(value)
+st.subheader("Ruwe data")
 
-                        except:
-                            return default
+st.dataframe(rider_df)
 
-                return default
-
-            # =========================================
-            # KPI VALUES
-            # =========================================
-
-            ftp = round(
-
-                get_col([
-                    "mftp",
-                    "ftp",
-                    "ftp_adj"
-                ]),
-
-                1
-            )
-
-            gewicht = round(
-
-                get_col([
-                    "gewicht",
-                    "weight"
-                ]),
-
-                1
-            )
-
-            ftp_kg = round(
-                ftp / gewicht,
-                2
-            ) if gewicht else 0
-
-            sprint = round(
-
-                get_col([
-                    "okj_10s",
-                    "v5"
-                ]),
-
-                0
-            )
-
-            twintig = round(
-
-                get_col([
-                    "okj_20m",
-                    "v2"
-                ]),
-
-                0
-            )
-
-            # =========================================
-            # KPI CARD HELPER
-            # =========================================
-
-            def card(title, value):
-
-                return html.Div(
-
-                    [
-
-                        html.Div(
-                            title,
-
-                            style={
-                                "fontSize": "14px",
-                                "color": "#666"
-                            }
-                        ),
-
-                        html.Div(
-                            str(value),
-
-                            style={
-                                "fontSize": "28px",
-                                "fontWeight": "bold"
-                            }
-                        )
-                    ],
-
-                    style={
-                        "backgroundColor": "white",
-                        "padding": "20px",
-                        "borderRadius": "10px",
-                        "boxShadow": "0 1px 4px rgba(0,0,0,0.1)"
-                    }
-                )
-
-            # =========================================
-            # KPI CARDS
-            # =========================================
-
-            kpis = [
-
-                card("FTP", f"{ftp} W"),
-
-                card("FTP/kg", ftp_kg),
-
-                card("10s", f"{sprint} W"),
-
-                card("20m", f"{twintig} W")
-            ]
-
-            # =========================================
-            # POWER PROFILE
-            # =========================================
-
-            labels = [
-                "10s",
-                "1m",
-                "5m",
-                "20m"
-            ]
-
-            values = [
-
-                get_col([
-                    "okj_10s",
-                    "v5"
-                ]),
-
-                get_col([
-                    "okj_1m",
-                    "v3"
-                ]),
-
-                get_col([
-                    "okj_5m",
-                    "v1"
-                ]),
-
-                get_col([
-                    "okj_20m",
-                    "v2"
-                ])
-            ]
-
-            fig = go.Figure()
-
-            fig.add_trace(
-
-                go.Scatter(
-
-                    x=labels,
-                    y=values,
-
-                    mode="lines+markers",
-
-                    line={
-                        "width": 4
-                    },
-
-                    marker={
-                        "size": 10
-                    },
-
-                    name=name
-                )
-            )
-
-            fig.update_layout(
-
-                title="Power Profile",
-
-                template="plotly_white",
-
-                height=500,
-
-                paper_bgcolor="#f4f6f8",
-
-                plot_bgcolor="white"
-            )
-
-            # =========================================
-            # ANALYSE
-            # =========================================
-
-            if ftp_kg > 5.5:
-
-                profiel = "Klimmer"
-
-            elif sprint > 1400:
-
-                profiel = "Sprinter"
-
-            elif ftp_kg > 4.8:
-
-                profiel = "Allrounder"
-
-            else:
-
-                profiel = "Ontwikkelende renner"
-
-            analysis = html.Div([
-
-                html.H3(
-                    "Automatische analyse"
-                ),
-
-                html.P(
-
-                    f"""
-                    Deze renner heeft een
-                    {profiel.lower()} profiel.
-
-                    FTP/kg bedraagt {ftp_kg}.
-                    Sprintvermogen bedraagt {sprint} watt.
-                    20 minuten vermogen bedraagt {twintig} watt.
-                    """
-                )
-            ])
-
-            return (
-                kpis,
-                fig,
-                analysis
-            )
-
-        except Exception as e:
-
-            print(e)
-
-            return (
-                [],
-                px.scatter(),
-                str(e)
-            )
+```
