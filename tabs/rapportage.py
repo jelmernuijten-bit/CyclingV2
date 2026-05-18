@@ -1,8 +1,10 @@
 from dash import html, dcc, Input, Output
 import plotly.graph_objects as go
-import pandas as pd
 
-from data_loader import load_data, prepare_df
+from data_loader import (
+    load_data,
+    prepare_df
+)
 
 # =========================================
 # LAYOUT
@@ -66,7 +68,7 @@ def rapportage_layout():
     ])
 
 # =========================================
-# REGISTER CALLBACKS
+# CALLBACKS
 # =========================================
 
 def register_rapportage_callbacks(app):
@@ -89,9 +91,12 @@ def register_rapportage_callbacks(app):
 
         if not db or not name:
 
-            empty_fig = go.Figure()
-
-            return [], empty_fig, "", ""
+            return (
+                [],
+                go.Figure(),
+                "",
+                ""
+            )
 
         # =========================================
         # LOAD DATA
@@ -107,9 +112,12 @@ def register_rapportage_callbacks(app):
 
         if rider.empty:
 
-            empty_fig = go.Figure()
-
-            return [], empty_fig, "", ""
+            return (
+                [],
+                go.Figure(),
+                "",
+                ""
+            )
 
         rider = rider.iloc[0]
 
@@ -117,7 +125,10 @@ def register_rapportage_callbacks(app):
         # KPI VALUES
         # =========================================
 
-        ftp = round(rider.get("mftp", 0), 1)
+        ftp = round(
+            rider.get("mftp", 0),
+            1
+        )
 
         gewicht = round(
             rider.get("gewicht", 0),
@@ -140,7 +151,7 @@ def register_rapportage_callbacks(app):
         )
 
         # =========================================
-        # KPI CARDS
+        # KPI CARD HELPER
         # =========================================
 
         def card(title, value):
@@ -159,7 +170,7 @@ def register_rapportage_callbacks(app):
                     ),
 
                     html.Div(
-                        value,
+                        str(value),
 
                         style={
                             "fontSize": "28px",
@@ -175,6 +186,10 @@ def register_rapportage_callbacks(app):
                     "boxShadow": "0 1px 4px rgba(0,0,0,0.1)"
                 }
             )
+
+        # =========================================
+        # KPI CARDS
+        # =========================================
 
         kpis = [
 
@@ -243,7 +258,7 @@ def register_rapportage_callbacks(app):
         )
 
         # =========================================
-        # LOAD STATUS
+        # TRAININGSSTATUS
         # =========================================
 
         kj7 = rider.get("kj7_20m", 0)
@@ -299,7 +314,7 @@ def register_rapportage_callbacks(app):
         )
 
         # =========================================
-        # AUTOMATIC ANALYSIS
+        # AUTOMATISCHE ANALYSE
         # =========================================
 
         if ftp_kg > 5.5:
@@ -327,7 +342,7 @@ def register_rapportage_callbacks(app):
             html.P(
 
                 f"""
-                Deze renner heeft een 
+                Deze renner heeft een
                 {profiel.lower()} profiel.
 
                 FTP/kg bedraagt {ftp_kg},
