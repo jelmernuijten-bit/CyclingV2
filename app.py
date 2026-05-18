@@ -1,4 +1,4 @@
-from dash import Dash, html, dcc, Input, Output
+from dash import Dash, html, dcc
 import dash_auth
 from flask import request
 import base64
@@ -77,46 +77,12 @@ app.layout = html.Div(id="main-layout")
 # =========================================
 
 @app.callback(
-    Output("main-layout", "children"),
-    Input("main-layout", "id")
+    dash.Output("main-layout", "children"),
+    dash.Input("main-layout", "id")
 )
 def render_layout(_):
 
     username = get_current_user()
-
-    tabs = [
-
-        dcc.Tab(
-            label="Vergelijking",
-            value="vergelijking",
-            children=[
-                vergelijking_layout()
-            ]
-        ),
-
-        dcc.Tab(
-            label="Rapportage",
-            value="rapportage",
-            children=[
-                rapportage_layout()
-            ]
-        )
-    ]
-
-    # Alleen Cyclinglab ziet Worksheet
-    if username == "Cyclinglab":
-
-        tabs.append(
-
-            dcc.Tab(
-                label="Worksheet",
-                value="worksheet",
-                children=[
-                    worksheet_layout()
-                ]
-            )
-
-        )
 
     return html.Div(
 
@@ -135,6 +101,7 @@ def render_layout(_):
                 id="db",
                 options=[],
                 placeholder="Select database",
+
                 style={
                     "marginBottom": "10px"
                 }
@@ -147,6 +114,7 @@ def render_layout(_):
             dcc.Dropdown(
                 id="name",
                 placeholder="Select renner",
+
                 style={
                     "marginBottom": "20px"
                 }
@@ -157,9 +125,56 @@ def render_layout(_):
             # =========================================
 
             dcc.Tabs(
+
                 id="main-tabs",
                 value="vergelijking",
-                children=tabs,
+
+                children=[
+
+                    # =========================================
+                    # VERGELIJKING
+                    # =========================================
+
+                    dcc.Tab(
+
+                        label="Vergelijking",
+                        value="vergelijking",
+
+                        children=[
+                            vergelijking_layout()
+                        ]
+                    ),
+
+                    # =========================================
+                    # RAPPORTAGE
+                    # =========================================
+
+                    dcc.Tab(
+
+                        label="Rapportage",
+                        value="rapportage",
+
+                        children=[
+                            rapportage_layout()
+                        ]
+                    ),
+
+                    # =========================================
+                    # WORKSHEET
+                    # =========================================
+
+                    dcc.Tab(
+
+                        label="Worksheet",
+                        value="worksheet",
+
+                        children=[
+                            worksheet_layout()
+                        ]
+
+                    ) if username == "Cyclinglab" else None
+
+                ],
 
                 style={
                     "marginBottom": "10px"
