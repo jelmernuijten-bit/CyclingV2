@@ -267,14 +267,14 @@ def register_rapportage_callbacks(app):
                 )
 
             # =========================================
-            # HOOFDPROFIEL
+            # HOOFDPROFIEL (U19 VERSION)
             # =========================================
 
             if (
 
-                ftp_kg >= 5.8
-                and vijf_min >= 500
-                and gewicht <= 70
+                ftp_kg >= 5.45
+                and vijf_min >= 440
+                and gewicht <= 68
 
             ):
 
@@ -282,8 +282,8 @@ def register_rapportage_callbacks(app):
 
             elif (
 
-                sprint >= 1600
-                and ftp_kg < 4.8
+                sprint >= 1280
+                and ftp_kg < 5.0
 
             ):
 
@@ -291,8 +291,8 @@ def register_rapportage_callbacks(app):
 
             elif (
 
-                ftp >= 390
-                and fatigue_5m <= 6
+                ftp >= 365
+                and fatigue_5m <= 8
 
             ):
 
@@ -300,8 +300,8 @@ def register_rapportage_callbacks(app):
 
             elif (
 
-                sprint >= 1400
-                and ftp_kg >= 4.8
+                sprint >= 1225
+                and ftp_kg >= 5.0
 
             ):
 
@@ -309,8 +309,8 @@ def register_rapportage_callbacks(app):
 
             elif (
 
-                vijf_min >= 520
-                and een_min >= 700
+                vijf_min >= 440
+                and een_min >= 680
 
             ):
 
@@ -318,8 +318,8 @@ def register_rapportage_callbacks(app):
 
             elif (
 
-                ftp >= 360
-                and fatigue_5m <= 8
+                ftp >= 340
+                and fatigue_5m <= 10
 
             ):
 
@@ -330,25 +330,29 @@ def register_rapportage_callbacks(app):
                 hoofdprofiel = "Developing Rider"
 
             # =========================================
-            # SUBTYPES
+            # SUBTYPES (U19 VERSION)
             # =========================================
 
             subtypes = []
 
-            # Fatigue Resistant
+            # =========================================
+            # FATIGUE RESISTANT
+            # =========================================
 
-            if fatigue_5m <= 5:
+            if fatigue_5m <= 7:
 
                 subtypes.append(
                     "Fatigue Resistant"
                 )
 
-            # Anaerobic
+            # =========================================
+            # ANAEROBIC
+            # =========================================
 
             if (
 
-                sprint >= 1500
-                and een_min >= 750
+                sprint >= 1250
+                and een_min >= 700
 
             ):
 
@@ -356,20 +360,24 @@ def register_rapportage_callbacks(app):
                     "Anaerobic"
                 )
 
-            # Endurance
+            # =========================================
+            # ENDURANCE
+            # =========================================
 
-            if kj28_20m >= 360:
+            if kj28_20m >= 300:
 
                 subtypes.append(
                     "Endurance"
                 )
 
-            # Explosive
+            # =========================================
+            # EXPLOSIVE
+            # =========================================
 
             if (
 
-                sprint >= 1450
-                and vijf_min >= 500
+                sprint >= 1225
+                and vijf_min >= 430
 
             ):
 
@@ -377,17 +385,21 @@ def register_rapportage_callbacks(app):
                     "Explosive"
                 )
 
-            # Lightweight
+            # =========================================
+            # LIGHTWEIGHT
+            # =========================================
 
-            if gewicht <= 68:
+            if gewicht <= 65:
 
                 subtypes.append(
                     "Lightweight"
                 )
 
-            # Durable
+            # =========================================
+            # DURABLE
+            # =========================================
 
-            if sprint_decay <= 7:
+            if sprint_decay <= 8:
 
                 subtypes.append(
                     "Durable"
@@ -476,10 +488,6 @@ def register_rapportage_callbacks(app):
 
             fig = go.Figure()
 
-            # =========================================
-            # LIJNEN DEFINIEREN
-            # =========================================
-
             lijnen = [
 
                 {
@@ -537,10 +545,6 @@ def register_rapportage_callbacks(app):
                     ]
                 }
             ]
-
-            # =========================================
-            # LIJNEN TOEVOEGEN
-            # =========================================
 
             for lijn in lijnen:
 
@@ -614,20 +618,55 @@ def register_rapportage_callbacks(app):
                     "Automatische analyse"
                 ),
 
+                html.P([
+
+                    "Deze renner heeft een ",
+
+                    html.Span(
+
+                        subtype,
+
+                        style={
+                            "color": "#2563eb",
+                            "fontWeight": "bold",
+                            "fontSize": "18px"
+                        }
+                    ),
+
+                    " ",
+
+                    html.Span(
+
+                        hoofdprofiel,
+
+                        style={
+                            "color": "#dc2626",
+                            "fontWeight": "bold",
+                            "fontSize": "18px"
+                        }
+                    ),
+
+                    " profiel."
+                ]),
+
+                html.Br(),
+
                 html.P(
+                    f"FTP/kg bedraagt {ftp_kg:.2f}."
+                ),
 
-                    f"""
-                    Deze renner heeft een
-                    {profiel} profiel.
+                html.P(
+                    f"Sprintvermogen bedraagt {sprint} watt."
+                ),
 
-                    FTP/kg bedraagt {ftp_kg:.2f}.
-                    Sprintvermogen bedraagt {sprint} watt.
-                    20 minuten vermogen bedraagt {twintig} watt.
+                html.P(
+                    f"20 minuten vermogen bedraagt {twintig} watt."
+                ),
 
-                    Vermogensverlies op 5 minuten na 28kj bedraagt
-                    {fatigue_5m}%.
-                    """
+                html.P(
+                    f"Vermogensverlies op 5 minuten na 28kj bedraagt {fatigue_5m}%."
                 )
+
             ])
 
             return (
