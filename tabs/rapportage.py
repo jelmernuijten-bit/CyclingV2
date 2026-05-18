@@ -158,8 +158,10 @@ def register_rapportage_callbacks(app):
                     "ftp_adj"
                 ]),
 
-                1
+                0
             )
+
+            ftp = int(ftp)
 
             gewicht = round(
 
@@ -176,7 +178,7 @@ def register_rapportage_callbacks(app):
                 2
             ) if gewicht else 0
 
-            sprint = round(
+            sprint = int(round(
 
                 get_col([
                     "okj_10s",
@@ -184,9 +186,9 @@ def register_rapportage_callbacks(app):
                 ]),
 
                 0
-            )
+            ))
 
-            twintig = round(
+            twintig = int(round(
 
                 get_col([
                     "okj_20m",
@@ -194,7 +196,7 @@ def register_rapportage_callbacks(app):
                 ]),
 
                 0
-            )
+            ))
 
             # =========================================
             # KPI CARD HELPER
@@ -241,7 +243,7 @@ def register_rapportage_callbacks(app):
 
                 card("FTP", f"{ftp} W"),
 
-                card("FTP/kg", ftp_kg),
+                card("FTP/kg", f"{ftp_kg:.2f}"),
 
                 card("10s", f"{sprint} W"),
 
@@ -421,7 +423,7 @@ def register_rapportage_callbacks(app):
                     Deze renner heeft een
                     {profiel.lower()} profiel.
 
-                    FTP/kg bedraagt {ftp_kg}.
+                    FTP/kg bedraagt {ftp_kg:.2f}.
                     Sprintvermogen bedraagt {sprint} watt.
                     20 minuten vermogen bedraagt {twintig} watt.
                     """
