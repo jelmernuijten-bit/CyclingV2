@@ -1,6 +1,7 @@
 from dash import html, dcc, Input, Output
 import plotly.graph_objects as go
 import plotly.express as px
+import numpy as np
 
 from data_loader import load_data
 
@@ -11,10 +12,6 @@ from data_loader import load_data
 def rapportage_layout():
 
     return html.Div([
-
-        # =========================================
-        # KPI CARDS
-        # =========================================
 
         html.Div(
             id="rapport-kpis",
@@ -27,17 +24,9 @@ def rapportage_layout():
             }
         ),
 
-        # =========================================
-        # POWER PROFILE
-        # =========================================
-
         dcc.Graph(
             id="power-profile"
         ),
-
-        # =========================================
-        # ANALYSIS
-        # =========================================
 
         html.Div(
             id="analysis-text",
@@ -67,6 +56,7 @@ def register_rapportage_callbacks(app):
         Input("db", "value"),
         Input("name", "value")
     )
+
     def update_rapportage(db, name):
 
         if not db or not name:
@@ -150,7 +140,7 @@ def register_rapportage_callbacks(app):
             # KPI VALUES
             # =========================================
 
-            ftp = round(
+            ftp = int(round(
 
                 get_col([
                     "mftp",
@@ -159,9 +149,7 @@ def register_rapportage_callbacks(app):
                 ]),
 
                 0
-            )
-
-            ftp = int(ftp)
+            ))
 
             gewicht = round(
 
@@ -219,7 +207,7 @@ def register_rapportage_callbacks(app):
             ))
 
             # =========================================
-            # FATIGUE DATA
+            # FATIGUE VALUES
             # =========================================
 
             kj28_10s = get_col([
@@ -267,92 +255,346 @@ def register_rapportage_callbacks(app):
                 )
 
             # =========================================
-            # HOOFDPROFIEL (U19 VERSION)
+            # PERCENTILE FUNCTIONS
             # =========================================
 
-            if (
+            def percentile_rank(series, value):
 
-                ftp_kg >= 5.45
-                and vijf_min >= 440
-                and gewicht <= 68
+                return round(
 
-            ):
+                    (
+                        np.sum(series <= value)
+                        / len(series)
+                    ) * 100,
 
-                hoofdprofiel = "Climber"
+                    1
+                )
 
-            elif (
+            def normalize(value):
 
-                sprint >= 1280
-                and ftp_kg < 5.0
-
-            ):
-
-                hoofdprofiel = "Sprinter"
-
-            elif (
-
-                ftp >= 365
-                and fatigue_5m <= 8
-
-            ):
-
-                hoofdprofiel = "Time Trialist"
-
-            elif (
-
-                sprint >= 1225
-                and ftp_kg >= 5.0
-
-            ):
-
-                hoofdprofiel = "Classics Rider"
-
-            elif (
-
-                vijf_min >= 440
-                and een_min >= 680
-
-            ):
-
-                hoofdprofiel = "Puncheur"
-
-            elif (
-
-                ftp >= 340
-                and fatigue_5m <= 10
-
-            ):
-
-                hoofdprofiel = "Diesel"
-
-            else:
-
-                hoofdprofiel = "Developing Rider"
+                return value / 100
 
             # =========================================
-            # SUBTYPES (U19 VERSION)
+            # DATABASE PERCENTILES
+            # =========================================
+
+            ftpkg_pct = percentile_rank(
+
+                df["mftp"] / df["gewicht"],
+                ftp_kg
+            )
+
+            ftp_pct = percentile_rank(
+                df["mftp"],
+                ftp
+            )
+
+            sprint_pct = percentile_rank(
+                df["okj_10s"],
+                sprint
+            )
+
+            eenmin_pct = percentile_rank(
+                df["okj_1min"],
+                een_min
+            )
+
+            vijfmin_pct = percentile_rank(
+                df["okj_5min"],
+                vijf_min
+            )
+
+            twintig_pct = percentile_rank(
+                df["okj_20m"],
+                twintig
+            )
+
+            gewicht_pct = percentile_rank(
+                df["gewicht"],
+                gewicht
+            )
+
+            kj28_20m_pct = percentile_rank(
+                df["kj28_20m"],
+                kj28_20m
+            )
+
+            # =========================================
+            # FATIGUE SCORES
+            # =========================================
+
+            fatigue_score = max(
+                0,
+                100 - (fatigue_5m * 8)
+            )
+
+            durability_score = max(
+                0,
+                100 - (sprint_decay * 10)
+            )
+
+            # =========================================
+            # NORMALIZED SCORES
+            # =========================================
+
+            ftpkg_n = normalize(ftpkg_pct)
+            ftp_n = normalize(ftp_pct)
+            sprint_n = normalize(sprint_pct)
+            eenmin_n = normalize(eenmin_pct)
+            vijfmin_n = normalize(vijfmin_pct)
+            twintig_n = normalize(twintig_pct)
+
+            gewicht_light_n = normalize(
+                100 - gewicht_pct
+            )
+
+            endurance_n = normalize(
+                kj28_20m_pct
+            )
+
+            fatigue_n = normalize(
+                fatigue_score
+            )
+
+            durability_n = normalize(
+                durability_score
+            )
+
+            # =========================================
+            # DECAY CURVES
+            # =========================================
+
+            fatigue_levels = [0, 7, 14, 21, 28]
+
+            sprint_curve = [
+
+                get_col(["okj_10s"]),
+                get_col(["kj7_10s"]),
+                get_col(["kj14_10s"]),
+                get_col(["kj21_10s"]),
+                get_col(["kj28_10s"])
+            ]
+
+            eenmin_curve = [
+
+                get_col(["okj_1min"]),
+                get_col(["kj7_1m"]),
+                get_col(["kj14_1m"]),
+                get_col(["kj21_1m"]),
+                get_col(["kj28_1m"])
+            ]
+
+            vijfmin_curve = [
+
+                get_col(["okj_5min"]),
+                get_col(["kj7_5m"]),
+                get_col(["kj14_5m"]),
+                get_col(["kj21_5m"]),
+                get_col(["kj28_5m"])
+            ]
+
+            twintig_curve = [
+
+                get_col(["okj_20m"]),
+                get_col(["kj7_20m"]),
+                get_col(["kj14_20m"]),
+                get_col(["kj21_20m"]),
+                get_col(["kj28_20m"])
+            ]
+
+            # =========================================
+            # DECAY SLOPES
+            # =========================================
+
+            slope_10s = np.polyfit(
+                fatigue_levels,
+                sprint_curve,
+                1
+            )[0]
+
+            slope_1m = np.polyfit(
+                fatigue_levels,
+                eenmin_curve,
+                1
+            )[0]
+
+            slope_5m = np.polyfit(
+                fatigue_levels,
+                vijfmin_curve,
+                1
+            )[0]
+
+            slope_20m = np.polyfit(
+                fatigue_levels,
+                twintig_curve,
+                1
+            )[0]
+
+            # =========================================
+            # DECAY SCORES
+            # =========================================
+
+            decay_10s_score = max(
+                0,
+                100 + (slope_10s * 4)
+            )
+
+            decay_1m_score = max(
+                0,
+                100 + (slope_1m * 4)
+            )
+
+            decay_5m_score = max(
+                0,
+                100 + (slope_5m * 5)
+            )
+
+            decay_20m_score = max(
+                0,
+                100 + (slope_20m * 6)
+            )
+
+            decay10_n = decay_10s_score / 100
+            decay1_n = decay_1m_score / 100
+            decay5_n = decay_5m_score / 100
+            decay20_n = decay_20m_score / 100
+
+            # =========================================
+            # PROFILE SCORES
+            # =========================================
+
+            climber_score = round(
+
+                (
+                    ftpkg_n * 0.30 +
+                    vijfmin_n * 0.25 +
+                    decay5_n * 0.20 +
+                    gewicht_light_n * 0.15 +
+                    fatigue_n * 0.10
+                ) * 100,
+
+                1
+            )
+
+            sprinter_score = round(
+
+                (
+                    sprint_n * 0.35 +
+                    eenmin_n * 0.20 +
+                    decay10_n * 0.25 +
+                    durability_n * 0.10 +
+                    (1 - gewicht_light_n) * 0.10
+                ) * 100,
+
+                1
+            )
+
+            tt_score = round(
+
+                (
+                    ftp_n * 0.25 +
+                    twintig_n * 0.25 +
+                    endurance_n * 0.20 +
+                    decay20_n * 0.20 +
+                    fatigue_n * 0.10
+                ) * 100,
+
+                1
+            )
+
+            classics_score = round(
+
+                (
+                    sprint_n * 0.20 +
+                    ftpkg_n * 0.20 +
+                    twintig_n * 0.20 +
+                    decay10_n * 0.15 +
+                    decay5_n * 0.15 +
+                    durability_n * 0.10
+                ) * 100,
+
+                1
+            )
+
+            puncheur_score = round(
+
+                (
+                    vijfmin_n * 0.30 +
+                    eenmin_n * 0.25 +
+                    sprint_n * 0.10 +
+                    decay5_n * 0.20 +
+                    ftpkg_n * 0.15
+                ) * 100,
+
+                1
+            )
+
+            diesel_score = round(
+
+                (
+                    ftp_n * 0.25 +
+                    twintig_n * 0.25 +
+                    endurance_n * 0.20 +
+                    decay20_n * 0.20 +
+                    fatigue_n * 0.10
+                ) * 100,
+
+                1
+            )
+
+            # =========================================
+            # SCORE OVERVIEW
+            # =========================================
+
+            profile_scores = {
+
+                "Climber": climber_score,
+                "Sprinter": sprinter_score,
+                "Time Trialist": tt_score,
+                "Classics Rider": classics_score,
+                "Puncheur": puncheur_score,
+                "Diesel": diesel_score
+            }
+
+            # =========================================
+            # BEST PROFILE
+            # =========================================
+
+            hoofdprofiel = max(
+                profile_scores,
+                key=profile_scores.get
+            )
+
+            hoofdscore = profile_scores[
+                hoofdprofiel
+            ]
+
+            sorted_profiles = sorted(
+
+                profile_scores.items(),
+                key=lambda x: x[1],
+                reverse=True
+            )
+
+            second_profile = sorted_profiles[1][0]
+            second_score = sorted_profiles[1][1]
+
+            # =========================================
+            # SUBTYPES
             # =========================================
 
             subtypes = []
 
-            # =========================================
-            # FATIGUE RESISTANT
-            # =========================================
-
-            if fatigue_5m <= 7:
+            if fatigue_score >= 75:
 
                 subtypes.append(
                     "Fatigue Resistant"
                 )
 
-            # =========================================
-            # ANAEROBIC
-            # =========================================
-
             if (
 
-                sprint >= 1250
-                and een_min >= 700
+                sprint_pct >= 85
+                and eenmin_pct >= 85
 
             ):
 
@@ -360,24 +602,16 @@ def register_rapportage_callbacks(app):
                     "Anaerobic"
                 )
 
-            # =========================================
-            # ENDURANCE
-            # =========================================
-
-            if kj28_20m >= 300:
+            if endurance_n >= 0.80:
 
                 subtypes.append(
                     "Endurance"
                 )
 
-            # =========================================
-            # EXPLOSIVE
-            # =========================================
-
             if (
 
-                sprint >= 1225
-                and vijf_min >= 430
+                sprint_pct >= 80
+                and vijfmin_pct >= 75
 
             ):
 
@@ -385,24 +619,111 @@ def register_rapportage_callbacks(app):
                     "Explosive"
                 )
 
-            # =========================================
-            # LIGHTWEIGHT
-            # =========================================
-
-            if gewicht <= 65:
+            if gewicht_light_n >= 0.80:
 
                 subtypes.append(
                     "Lightweight"
                 )
 
-            # =========================================
-            # DURABLE
-            # =========================================
-
-            if sprint_decay <= 8:
+            if durability_score >= 80:
 
                 subtypes.append(
                     "Durable"
+                )
+
+            score_spread = (
+
+                max(profile_scores.values())
+                - min(profile_scores.values())
+            )
+
+            if score_spread <= 15:
+
+                subtypes.append(
+                    "Allround"
+                )
+
+            # =========================================
+            # DECAY ARCHETYPES
+            # =========================================
+
+            decay_tags = []
+
+            if (
+
+                sprint_pct >= 85
+                and decay10_n >= 0.80
+
+            ):
+
+                decay_tags.append(
+                    "Repeatable Sprinter"
+                )
+
+            if (
+
+                sprint_pct >= 90
+                and decay10_n <= 0.55
+
+            ):
+
+                decay_tags.append(
+                    "One Shot Sprinter"
+                )
+
+            if (
+
+                ftpkg_n >= 0.85
+                and decay5_n >= 0.85
+
+            ):
+
+                decay_tags.append(
+                    "Fatigue Climber"
+                )
+
+            if (
+
+                decay20_n >= 0.90
+                and endurance_n >= 0.85
+
+            ):
+
+                decay_tags.append(
+                    "Durable Engine"
+                )
+
+            if (
+
+                sprint_pct >= 80
+                and decay1_n <= 0.50
+
+            ):
+
+                decay_tags.append(
+                    "Anaerobic Fader"
+                )
+
+            if (
+
+                decay20_n >= 0.85
+                and ftp_n >= 0.80
+
+            ):
+
+                decay_tags.append(
+                    "Diesel Durability"
+                )
+
+            if (
+
+                decay5_n >= 0.90
+                and fatigue_n >= 0.90
+
+            ):
+
+                decay_tags.append(
+                    "Clutch Performer"
                 )
 
             # =========================================
@@ -416,12 +737,6 @@ def register_rapportage_callbacks(app):
             else:
 
                 subtype = "Balanced"
-
-            # =========================================
-            # FINALE PROFIEL
-            # =========================================
-
-            profiel = f"{subtype} {hoofdprofiel}"
 
             # =========================================
             # KPI CARD HELPER
@@ -476,7 +791,7 @@ def register_rapportage_callbacks(app):
             ]
 
             # =========================================
-            # POWER PROFILE
+            # POWER PROFILE GRAPH
             # =========================================
 
             labels = [
@@ -566,12 +881,12 @@ def register_rapportage_callbacks(app):
                         mode="lines+markers",
 
                         line={
-                            "width": 1.5,
+                            "width": 2,
                             "color": lijn["kleur"]
                         },
 
                         marker={
-                            "size": 5
+                            "size": 6
                         },
 
                         name=lijn["naam"]
@@ -580,11 +895,11 @@ def register_rapportage_callbacks(app):
 
             fig.update_layout(
 
-                title="Power Profile",
+                title="Power Profile & Durability",
 
                 template="plotly_white",
 
-                height=500,
+                height=550,
 
                 paper_bgcolor="#f4f6f8",
 
@@ -598,42 +913,24 @@ def register_rapportage_callbacks(app):
                     "y": 1.02,
                     "xanchor": "right",
                     "x": 1
-                },
-
-                margin={
-                    "l": 40,
-                    "r": 40,
-                    "t": 80,
-                    "b": 40
                 }
             )
 
             # =========================================
-            # ANALYSE
+            # ANALYSIS
             # =========================================
 
             analysis = html.Div([
 
-                html.H3(
-                    "Automatische analyse"
+                html.H2(
+                    "Advanced Rider Analysis"
                 ),
+
+                html.Br(),
 
                 html.P([
 
-                    "Deze renner heeft een ",
-
-                    html.Span(
-
-                        subtype,
-
-                        style={
-                            "color": "#2563eb",
-                            "fontWeight": "bold",
-                            "fontSize": "18px"
-                        }
-                    ),
-
-                    " ",
+                    "Primair profiel: ",
 
                     html.Span(
 
@@ -642,29 +939,130 @@ def register_rapportage_callbacks(app):
                         style={
                             "color": "#dc2626",
                             "fontWeight": "bold",
-                            "fontSize": "18px"
+                            "fontSize": "22px"
                         }
                     ),
 
-                    " profiel."
+                    f" ({hoofdscore}%)"
+                ]),
+
+                html.P([
+
+                    "Secundair profiel: ",
+
+                    html.Span(
+
+                        second_profile,
+
+                        style={
+                            "color": "#2563eb",
+                            "fontWeight": "bold",
+                            "fontSize": "20px"
+                        }
+                    ),
+
+                    f" ({second_score}%)"
                 ]),
 
                 html.Br(),
 
-                html.P(
-                    f"FTP/kg bedraagt {ftp_kg:.2f}."
+                html.H3(
+                    "Subtypes"
                 ),
 
                 html.P(
-                    f"Sprintvermogen bedraagt {sprint} watt."
+                    subtype
+                ),
+
+                html.Br(),
+
+                html.H3(
+                    "Profile Scores"
                 ),
 
                 html.P(
-                    f"20 minuten vermogen bedraagt {twintig} watt."
+                    f"Climber: {climber_score}%"
                 ),
 
                 html.P(
-                    f"Vermogensverlies op 5 minuten na 28kj bedraagt {fatigue_5m}%."
+                    f"Sprinter: {sprinter_score}%"
+                ),
+
+                html.P(
+                    f"Time Trialist: {tt_score}%"
+                ),
+
+                html.P(
+                    f"Classics Rider: {classics_score}%"
+                ),
+
+                html.P(
+                    f"Puncheur: {puncheur_score}%"
+                ),
+
+                html.P(
+                    f"Diesel: {diesel_score}%"
+                ),
+
+                html.Br(),
+
+                html.H3(
+                    "Decay Archetypes"
+                ),
+
+                html.Ul([
+
+                    html.Li(tag)
+                    for tag in decay_tags
+
+                ]),
+
+                html.Br(),
+
+                html.H3(
+                    "Durability Scores"
+                ),
+
+                html.P(
+                    f"10s Durability: {round(decay_10s_score,1)}"
+                ),
+
+                html.P(
+                    f"1min Durability: {round(decay_1m_score,1)}"
+                ),
+
+                html.P(
+                    f"5min Durability: {round(decay_5m_score,1)}"
+                ),
+
+                html.P(
+                    f"20min Durability: {round(decay_20m_score,1)}"
+                ),
+
+                html.Br(),
+
+                html.H3(
+                    "Percentile Scores"
+                ),
+
+                html.P(
+                    f"FTP/kg: {ftpkg_pct}e percentiel"
+                ),
+
+                html.P(
+                    f"Sprint: {sprint_pct}e percentiel"
+                ),
+
+                html.P(
+                    f"1 minuut: {eenmin_pct}e percentiel"
+                ),
+
+                html.P(
+                    f"5 minuten: {vijfmin_pct}e percentiel"
+                ),
+
+                html.P(
+                    f"20 minuten: {twintig_pct}e percentiel"
                 )
 
             ])
