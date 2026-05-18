@@ -267,12 +267,12 @@ def register_rapportage_callbacks(app):
                 ]),
 
                 get_col([
-                    "okj_1m",
+                    "okj_1min",
                     "v3"
                 ]),
 
                 get_col([
-                    "okj_5m",
+                    "okj_5min",
                     "v1"
                 ]),
 
