@@ -259,51 +259,105 @@ def register_rapportage_callbacks(app):
                 "20m"
             ]
 
-            values = [
-
-                get_col([
-                    "okj_10s",
-                    "v5"
-                ]),
-
-                get_col([
-                    "okj_1min",
-                    "v3"
-                ]),
-
-                get_col([
-                    "okj_5min",
-                    "v1"
-                ]),
-
-                get_col([
-                    "okj_20m",
-                    "v2"
-                ])
-            ]
-
             fig = go.Figure()
 
-            fig.add_trace(
+            # =========================================
+            # LIJNEN DEFINIEREN
+            # =========================================
 
-                go.Scatter(
+            lijnen = [
 
-                    x=labels,
-                    y=values,
+                {
+                    "naam": "0kj",
+                    "kleur": "#000000",
+                    "cols": [
+                        "okj_10s",
+                        "okj_1min",
+                        "okj_5min",
+                        "okj_20m"
+                    ]
+                },
 
-                    mode="lines+markers",
+                {
+                    "naam": "7kj",
+                    "kleur": "#e63946",
+                    "cols": [
+                        "7kj_10s",
+                        "7kj_1min",
+                        "7kj_5min",
+                        "7kj_20m"
+                    ]
+                },
 
-                    line={
-                        "width": 4
-                    },
+                {
+                    "naam": "14kj",
+                    "kleur": "#457b9d",
+                    "cols": [
+                        "14kj_10s",
+                        "14kj_1min",
+                        "14kj_5min",
+                        "14kj_20m"
+                    ]
+                },
 
-                    marker={
-                        "size": 10
-                    },
+                {
+                    "naam": "21kj",
+                    "kleur": "#2a9d8f",
+                    "cols": [
+                        "21kj_10s",
+                        "21kj_1min",
+                        "21kj_5min",
+                        "21kj_20m"
+                    ]
+                },
 
-                    name=name
+                {
+                    "naam": "28kj",
+                    "kleur": "#f4a261",
+                    "cols": [
+                        "28kj_10s",
+                        "28kj_1min",
+                        "28kj_5min",
+                        "28kj_20m"
+                    ]
+                }
+            ]
+
+            # =========================================
+            # LIJNEN TOEVOEGEN
+            # =========================================
+
+            for lijn in lijnen:
+
+                values = [
+
+                    get_col([lijn["cols"][0]]),
+                    get_col([lijn["cols"][1]]),
+                    get_col([lijn["cols"][2]]),
+                    get_col([lijn["cols"][3]])
+                ]
+
+                fig.add_trace(
+
+                    go.Scatter(
+
+                        x=labels,
+                        y=values,
+
+                        mode="lines+markers",
+
+                        line={
+                            "width": 2,
+                            "color": lijn["kleur"]
+                        },
+
+                        marker={
+                            "size": 6
+                        },
+
+                        name=lijn["naam"]
+                    )
                 )
-            )
 
             fig.update_layout(
 
@@ -315,7 +369,15 @@ def register_rapportage_callbacks(app):
 
                 paper_bgcolor="#f4f6f8",
 
-                plot_bgcolor="white"
+                plot_bgcolor="white",
+
+                legend={
+                    "orientation": "h",
+                    "yanchor": "bottom",
+                    "y": 1.02,
+                    "xanchor": "right",
+                    "x": 1
+                }
             )
 
             # =========================================
