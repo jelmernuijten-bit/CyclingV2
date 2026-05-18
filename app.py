@@ -38,155 +38,141 @@ auth = dash_auth.BasicAuth(
 )
 
 # =========================================
-# CURRENT USER HELPER
+# CURRENT USER
 # =========================================
 
 def get_current_user():
 
-    auth_header = request.headers.get("Authorization")
+    auth_header = request.headers.get(
+        "Authorization"
+    )
 
     if not auth_header:
         return None
 
     try:
 
-        auth_type, credentials = auth_header.split()
-
-        if auth_type.lower() != "basic":
-            return None
+        auth_type, credentials = (
+            auth_header.split()
+        )
 
         decoded = base64.b64decode(
             credentials
         ).decode("utf-8")
 
-        username, password = decoded.split(":", 1)
+        username, _ = decoded.split(
+            ":",
+            1
+        )
 
         return username
 
     except:
+
         return None
 
 # =========================================
 # MAIN LAYOUT
 # =========================================
 
-app.layout = html.Div(id="main-layout")
-
-# =========================================
-# DYNAMIC LAYOUT
-# =========================================
-
-@app.callback(
-    Output("main-layout", "children"),
-    Input("main-layout", "id")
-)
-def render_layout(_):
-
-    username = get_current_user()
-
-    tabs = [
-
-        # =========================================
-        # VERGELIJKING
-        # =========================================
-
-        dcc.Tab(
-
-            label="Vergelijking",
-            value="vergelijking",
-
-            children=[
-                vergelijking_layout()
-            ]
-        ),
-
-        # =========================================
-        # RAPPORTAGE
-        # =========================================
-
-        dcc.Tab(
-
-            label="Rapportage",
-            value="rapportage",
-
-            children=[
-                rapportage_layout()
-            ]
-        )
-    ]
+app.layout = html.Div([
 
     # =========================================
-    # WORKSHEET
+    # DATABASE
     # =========================================
 
-    if username == "Cyclinglab":
-
-        tabs.append(
-
-            dcc.Tab(
-
-                label="Worksheet",
-                value="worksheet",
-
-                children=[
-                    worksheet_layout()
-                ]
-            )
-        )
-
-    return html.Div(
+    dcc.Dropdown(
+        id="db",
+        options=[],
+        placeholder="Select database",
 
         style={
-            "backgroundColor": "#f4f6f8",
-            "padding": "10px"
-        },
+            "marginBottom": "10px"
+        }
+    ),
+
+    # =========================================
+    # RENNER
+    # =========================================
+
+    dcc.Dropdown(
+        id="name",
+        placeholder="Select renner",
+
+        style={
+            "marginBottom": "20px"
+        }
+    ),
+
+    # =========================================
+    # TABS
+    # =========================================
+
+    dcc.Tabs(
+
+        id="main-tabs",
+        value="vergelijking",
 
         children=[
 
-            # =========================================
-            # DATABASE DROPDOWN
-            # =========================================
-
-            dcc.Dropdown(
-                id="db",
-                options=[],
-                placeholder="Select database",
-
-                style={
-                    "marginBottom": "10px"
-                }
+            dcc.Tab(
+                label="Vergelijking",
+                value="vergelijking"
             ),
 
-            # =========================================
-            # RENNER DROPDOWN
-            # =========================================
-
-            dcc.Dropdown(
-                id="name",
-                placeholder="Select renner",
-
-                style={
-                    "marginBottom": "20px"
-                }
+            dcc.Tab(
+                label="Rapportage",
+                value="rapportage"
             ),
 
-            # =========================================
-            # TABS
-            # =========================================
-
-            dcc.Tabs(
-
-                id="main-tabs",
-                value="vergelijking",
-
-                children=tabs,
-
-                style={
-                    "marginBottom": "10px"
-                }
+            dcc.Tab(
+                label="Worksheet",
+                value="worksheet"
             )
-        ]
-    )
+        ],
+
+        style={
+            "marginBottom": "10px"
+        }
+    ),
+
+    # =========================================
+    # TAB CONTENT
+    # =========================================
+
+    html.Div(id="tab-content")
+
+])
+
+# =========================================
+# TAB RENDERING
+# =========================================
+
+@app.callback(
+    Output("tab-content", "children"),
+    Input("main-tabs", "value")
+)
+def render_tab(tab):
+
+    username = get_current_user()
+
+    if tab == "vergelijking":
+
+        return vergelijking_layout()
+
+    elif tab == "rapportage":
+
+        return rapportage_layout()
+
+    elif tab == "worksheet":
+
+        if username == "Cyclinglab":
+
+            return worksheet_layout()
+
+        return html.Div()
+
+    return html.Div()
 
 # =========================================
 # REGISTER CALLBACKS
@@ -196,13 +182,9 @@ register_callbacks(app)
 register_rapportage_callbacks(app)
 
 # =========================================
-# RUN APP
+# RUN
 # =========================================
 
 if __name__ == "__main__":
-
-    url = "http://localhost:8050/"
-
-    print(f"\nOpen dashboard: {url}\n")
 
     app.run(debug=True)
