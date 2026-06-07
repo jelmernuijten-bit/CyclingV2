@@ -1,143 +1,259 @@
+# data_loader.py
 
 import sqlite3
+from pathlib import Path
+
 import pandas as pd
-import numpy as np
-import os
-import glob
-import gdown
-import json
-
-from utils import (
-    safe_float,
-    parse_duur,
-    find_best_exponent
-)
-
-base_dir = os.path.dirname(os.path.abspath(__file__))
-
-GOOGLE_DRIVE_FOLDER = "https://drive.google.com/drive/folders/1nX5wfBjcekwJpZ_uB05t0TByLhbtb2Br"
-
-local_db_folder = os.path.join(base_dir, "drive_databases")
-cache_file = os.path.join(base_dir, "db_cache.json")
-
-os.makedirs(local_db_folder, exist_ok=True)
 
 
-def load_cache():
+class DatabaseService:
 
-    if os.path.exists(cache_file):
+    def __init__(self, db_path):
+        self.db_path = Path(db_path)
 
-        try:
-            with open(cache_file, "r") as f:
-                return json.load(f)
-        except:
-            return {}
+    def connect(self):
+        return sqlite3.connect(self.db_path)
 
-    return {}
+    # --------------------------------------------------
+    # Renners
+    # --------------------------------------------------
 
+    def get_renners(self):
 
-def save_cache(cache):
+        query = """
+        SELECT
+            id,
+            naam,
+            geboortejaar,
+            geslacht
+        FROM renners
+        ORDER BY naam
+        """
 
-    with open(cache_file, "w") as f:
-        json.dump(cache, f)
+        with self.connect() as conn:
+            return pd.read_sql_query(query, conn)
 
+    def get_renner_id(self, naam):
 
-def sync_databases_if_needed():
+        query = """
+        SELECT id
+        FROM renners
+        WHERE naam = ?
+        """
 
-    cache = load_cache()
+        with self.connect() as conn:
 
-    print("Controle Google Drive databases...")
+            row = conn.execute(
+                query,
+                (naam,)
+            ).fetchone()
 
-    try:
+        return row[0] if row else None
 
-        gdown.download_folder(
-            GOOGLE_DRIVE_FOLDER,
-            output=local_db_folder,
-            quiet=True,
-            use_cookies=False,
+    # --------------------------------------------------
+    # Jaren
+    # --------------------------------------------------
+
+    def get_jaren(self, renner_id):
+
+        query = """
+        SELECT DISTINCT jaar
+        FROM metingen
+        WHERE renner_id = ?
+        ORDER BY jaar
+        """
+
+        with self.connect() as conn:
+
+            rows = conn.execute(
+                query,
+                (renner_id,)
+            ).fetchall()
+
+        return [r[0] for r in rows]
+
+    # --------------------------------------------------
+    # Metrics
+    # --------------------------------------------------
+
+    def get_metrics(self, renner_id, jaar):
+
+        query = """
+        SELECT
+            mt.naam,
+            me.waarde
+        FROM metingen me
+        JOIN metrics mt
+            ON mt.id = me.metric_id
+        WHERE me.renner_id = ?
+        AND me.jaar = ?
+        """
+
+        with self.connect() as conn:
+
+            rows = conn.execute(
+                query,
+                (renner_id, jaar)
+            ).fetchall()
+
+        return {
+            naam: waarde
+            for naam, waarde in rows
+        }
+
+    def get_metric(self,
+                   renner_id,
+                   jaar,
+                   metric_name):
+
+        metrics = self.get_metrics(
+            renner_id,
+            jaar
         )
 
-        save_cache(cache)
+        return metrics.get(metric_name)
 
-    except Exception as e:
+    # --------------------------------------------------
+    # Historie
+    # --------------------------------------------------
 
-        print(f"Google Drive sync fout: {e}")
+    def get_metric_history(
+        self,
+        renner_id,
+        metric_name
+    ):
+
+        query = """
+        SELECT
+            me.jaar,
+            me.waarde
+        FROM metingen me
+        JOIN metrics mt
+            ON mt.id = me.metric_id
+        WHERE me.renner_id = ?
+        AND mt.naam = ?
+        ORDER BY me.jaar
+        """
+
+        with self.connect() as conn:
+
+            return pd.read_sql_query(
+                query,
+                conn,
+                params=(
+                    renner_id,
+                    metric_name
+                )
+            )
+
+    # --------------------------------------------------
+    # Powercurve
+    # --------------------------------------------------
+
+    def get_powercurve(
+        self,
+        renner_id,
+        jaar
+    ):
+
+        query = """
+        SELECT
+            fatigue_kj,
+            duration_s,
+            power
+        FROM powercurve
+        WHERE renner_id = ?
+        AND jaar = ?
+        """
+
+        with self.connect() as conn:
+
+            return pd.read_sql_query(
+                query,
+                conn,
+                params=(
+                    renner_id,
+                    jaar
+                )
+            )
+
+    def get_power(
+        self,
+        renner_id,
+        jaar,
+        fatigue_kj,
+        duration_s
+    ):
+
+        query = """
+        SELECT power
+        FROM powercurve
+        WHERE renner_id = ?
+        AND jaar = ?
+        AND fatigue_kj = ?
+        AND duration_s = ?
+        """
+
+        with self.connect() as conn:
+
+            row = conn.execute(
+                query,
+                (
+                    renner_id,
+                    jaar,
+                    fatigue_kj,
+                    duration_s
+                )
+            ).fetchone()
+
+        return row[0] if row else None
+
+    # --------------------------------------------------
+    # Dashboard dataframe
+    # --------------------------------------------------
+
+    def get_metrics_dataframe(self):
+
+        query = """
+        SELECT
+            r.naam,
+            me.jaar,
+            mt.naam AS metric,
+            me.waarde
+        FROM metingen me
+        JOIN renners r
+            ON r.id = me.renner_id
+        JOIN metrics mt
+            ON mt.id = me.metric_id
+        """
+
+        with self.connect() as conn:
+
+            df = pd.read_sql_query(
+                query,
+                conn
+            )
+
+        if df.empty:
+            return pd.DataFrame()
+
+        df = df.pivot_table(
+            index=[
+                "naam",
+                "jaar"
+            ],
+            columns="metric",
+            values="waarde",
+            aggfunc="first"
+        ).reset_index()
+
+        return df
 
 
-sync_databases_if_needed()
+# ------------------------------------------------------
+# Backwards compatible helper
+# ------------------------------------------------------
 
+def load_database(db_path):
 
-def get_database_options():
-
-    return [
-        {"label": f, "value": f}
-        for root, dirs, files in os.walk(local_db_folder)
-        for f in files
-        if f.endswith(".db")
-    ]
-
-
-def load_data(db_name):
-
-    db_path = None
-
-    for root, dirs, files in os.walk(local_db_folder):
-
-        if db_name in files:
-
-            db_path = os.path.join(root, db_name)
-            break
-
-    if db_path is None:
-        raise FileNotFoundError(f"Database niet gevonden: {db_name}")
-
-    conn = sqlite3.connect(db_path)
-
-    df = pd.read_sql_query("""
-        SELECT m.*, r.naam
-        FROM metingen m
-        JOIN renners r ON m.renner_id = r.id
-    """, conn)
-
-    conn.close()
-
-    return df
-
-
-def prepare_df(df):
-
-    df["naam"] = df.iloc[:, -1]
-    df["gewicht"] = df.iloc[:, -2].apply(safe_float)
-
-    df["v2"] = df.iloc[:, 2].apply(safe_float)
-    df["v3"] = df.iloc[:, 3].apply(safe_float)
-    df["v5"] = df.iloc[:, 5].apply(safe_float)
-    df["v11"] = df.iloc[:, 11].apply(safe_float)
-    df["ftp"] = df.iloc[:, 22].apply(safe_float)
-    df["vo2"] = df.iloc[:, 23].apply(safe_float)
-
-    df["duur"] = (
-    df.iloc[:, 25]
-    .apply(parse_duur) / 3600
-).round(1)
-
-    df = df.sort_values("duur")
-
-    df["v2_kg"] = (df["v2"] / df["gewicht"]).round(1)
-    df["v5_kg"] = (df["v5"] / df["gewicht"]).round(1)
-    df["v3_kg"] = (df["v3"] / df["gewicht"]).round(1)
-    df["v11_kg"] = (df["v11"] / df["gewicht"]).round(1)
-
-    df["ftp_kg"] = (df["ftp"] / df["gewicht"]).round(2)
-
-    best_exp = find_best_exponent(df)
-
-    df["ftp_adj"] = (
-        df["ftp"] / (df["gewicht"] ** best_exp)
-    ).round(2)
-
-    df["vo2_adj"] = (
-        df["vo2"] / (df["gewicht"] ** best_exp)
-    ).round(2)
-
-    return df, best_exp
+    return DatabaseService(db_path)
