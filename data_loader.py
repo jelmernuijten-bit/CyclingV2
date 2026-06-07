@@ -7,7 +7,10 @@ from utils import safe_float
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
-GOOGLE_DRIVE_FILE = "https://drive.google.com/uc?id=1o79swSIJGhCHR-QRueKfcu7cA5pDKjKA"
+GOOGLE_DRIVE_FILE = (
+    "https://drive.google.com/uc?export=download&id="
+    "1o79swSIJGhCHR-QRueKfcu7cA5pDKjKA"
+)
 DB_FILE = os.path.join(base_dir, "cycling.db")
 
 
@@ -20,8 +23,7 @@ def ensure_database():
         gdown.download(
             GOOGLE_DRIVE_FILE,
             DB_FILE,
-            quiet=False,
-            fuzzy=True
+            quiet=False
         )
 
 
