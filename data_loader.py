@@ -137,6 +137,9 @@ def load_data():
         )
     )
 
+    print("KOLOMMEN:")
+    print(df.columns.tolist())
+
     return df
 
 
@@ -209,5 +212,24 @@ def prepare_df(df):
             df[f"{col}_kg"] = (
                 df[col] / df["gewicht"]
             ).round(2)
+
+    # =========================================
+    # DEBUG
+    # =========================================
+
+    print("CHECK KOLOMMEN")
+
+    for col in [
+        "v2",
+        "v3",
+        "v5",
+        "v11",
+        "duur",
+        "ftp",
+        "ftp_kg",
+        "vo2",
+        "vo2_kg"
+    ]:
+        print(col, col in df.columns)
 
     return df
