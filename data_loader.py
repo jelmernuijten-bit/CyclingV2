@@ -4,8 +4,11 @@ import sqlite3
 import tempfile
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import requests
+
+from utils import find_best_exponent
 
 
 # ==================================================
@@ -80,6 +83,10 @@ class DatabaseService:
             download_database(db_name)
         )
 
+    # --------------------------------------------------
+    # Connection
+    # --------------------------------------------------
+
     def connect(self):
 
         return sqlite3.connect(
@@ -114,7 +121,7 @@ class DatabaseService:
             )
 
     # --------------------------------------------------
-    # Metrics dataframe
+    # Metrics
     # --------------------------------------------------
 
     def get_metrics_dataframe(self):
@@ -122,6 +129,7 @@ class DatabaseService:
         query = """
 
         SELECT
+            r.id AS renner_id,
             r.naam,
             me.jaar,
             mt.naam AS metric,
@@ -145,12 +153,12 @@ class DatabaseService:
             )
 
         if df.empty:
-
             return pd.DataFrame()
 
         df = df.pivot_table(
 
             index=[
+                "renner_id",
                 "naam",
                 "jaar"
             ],
@@ -166,7 +174,7 @@ class DatabaseService:
         return df
 
     # --------------------------------------------------
-    # Powercurve dataframe
+    # Powercurve
     # --------------------------------------------------
 
     def get_powercurve_dataframe(self):
@@ -174,6 +182,7 @@ class DatabaseService:
         query = """
 
         SELECT
+            r.id AS renner_id,
             r.naam,
             p.jaar,
             p.fatigue_kj,
@@ -195,10 +204,10 @@ class DatabaseService:
             )
 
     # --------------------------------------------------
-    # Legacy dataframe
+    # Comparison dataframe
     # --------------------------------------------------
 
-    def get_legacy_dataframe(self):
+    def get_comparison_dataframe(self):
 
         metrics_df = (
             self.get_metrics_dataframe()
@@ -209,114 +218,233 @@ class DatabaseService:
         )
 
         if metrics_df.empty:
-
             return pd.DataFrame()
-
-        if power_df.empty:
-
-            return metrics_df
-
-        duration_map = {
-
-            10: "10s",
-            60: "1m",
-            300: "5m",
-            1200: "20m"
-        }
 
         rows = []
 
-        for (naam, jaar), grp in power_df.groupby(
-            ["naam", "jaar"]
-        ):
+        for _, rider in metrics_df.iterrows():
+
+            renner_id = rider["renner_id"]
+            naam = rider["naam"]
+            jaar = rider["jaar"]
+
+            power = power_df[
+
+                (power_df["renner_id"] == renner_id)
+                &
+                (power_df["jaar"] == jaar)
+
+            ]
+
+            def get_power(
+                fatigue,
+                duration
+            ):
+
+                hit = power[
+
+                    (power["fatigue_kj"] == fatigue)
+                    &
+                    (power["duration_s"] == duration)
+
+                ]
+
+                if hit.empty:
+                    return np.nan
+
+                return float(
+                    hit.iloc[0]["power"]
+                )
+
+            gewicht = rider.get(
+                "Gewicht",
+                np.nan
+            )
+
+            ftp = rider.get(
+                "mFTP",
+                np.nan
+            )
+
+            vo2 = rider.get(
+                "mVO2",
+                np.nan
+            )
+
+            afstand = rider.get(
+                "Afstand",
+                np.nan
+            )
+
+            duur = rider.get(
+                "Duur",
+                np.nan
+            )
 
             row = {
 
-                "naam": naam,
-                "jaar": jaar
+                "renner_id":
+                    renner_id,
+
+                "naam":
+                    naam,
+
+                "jaar":
+                    jaar,
+
+                "ftp":
+                    ftp,
+
+                "vo2":
+                    vo2,
+
+                "gewicht":
+                    gewicht,
+
+                "afstand":
+                    afstand,
+
+                "duur":
+                    duur,
+
+                "power_10s":
+                    get_power(0, 10),
+
+                "power_1m":
+                    get_power(0, 60),
+
+                "power_5m":
+                    get_power(0, 300),
+
+                "power_20m":
+                    get_power(0, 1200),
+
+                "fatigue7_10s":
+                    get_power(7, 10),
+
+                "fatigue14_10s":
+                    get_power(14, 10),
+
+                "fatigue21_10s":
+                    get_power(21, 10),
+
+                "fatigue28_10s":
+                    get_power(28, 10),
+
+                "fatigue21_1m":
+                    get_power(21, 60),
+
+                "fatigue21_5m":
+                    get_power(21, 300),
+
+                "fatigue21_20m":
+                    get_power(21, 1200)
 
             }
 
-            for _, r in grp.iterrows():
-
-                fatigue = int(
-                    r["fatigue_kj"]
-                )
-
-                duration = int(
-                    r["duration_s"]
-                )
-
-                power = r["power"]
-
-                if duration not in duration_map:
-                    continue
-
-                suffix = duration_map[
-                    duration
-                ]
-
-                if fatigue == 0:
-
-                    if suffix == "10s":
-                        row["okj_10s"] = power
-
-                    elif suffix == "1m":
-                        row["okj_1min"] = power
-
-                    elif suffix == "5m":
-                        row["okj_5min"] = power
-
-                    elif suffix == "20m":
-                        row["okj_20m"] = power
-
-                else:
-
-                    row[
-                        f"kj{fatigue}_{suffix}"
-                    ] = power
-
             rows.append(row)
 
-        power_wide = pd.DataFrame(rows)
-
-        df = metrics_df.merge(
-
-            power_wide,
-
-            on=[
-                "naam",
-                "jaar"
-            ],
-
-            how="left"
-
+        df = pd.DataFrame(
+            rows
         )
 
-        rename_map = {
+        if df.empty:
+            return df
 
-            "mFTP": "mftp",
-            "mVO2": "vo2",
-            "Gewicht": "gewicht",
-            "Duur": "duur",
-            "Afstand": "afstand"
-        }
+        gewicht = df["gewicht"].replace(
+            0,
+            np.nan
+        )
 
-        df = df.rename(
-            columns=rename_map
+        df["power_10s_kg"] = (
+            df["power_10s"] / gewicht
+        )
+
+        df["power_1m_kg"] = (
+            df["power_1m"] / gewicht
+        )
+
+        df["power_5m_kg"] = (
+            df["power_5m"] / gewicht
+        )
+
+        df["power_20m_kg"] = (
+            df["power_20m"] / gewicht
+        )
+
+        df["fatigue21_1m_kg"] = (
+            df["fatigue21_1m"] / gewicht
+        )
+
+        best_exp = find_best_exponent(
+            pd.DataFrame({
+
+                "mVO2":
+                    df["vo2"],
+
+                "Gewicht":
+                    df["gewicht"]
+
+            })
+        )
+
+        df["ftp_adj"] = (
+            df["ftp"]
+            /
+            (
+                gewicht ** best_exp
+            )
+        )
+
+        df["vo2_adj"] = (
+            df["vo2"]
+            /
+            (
+                gewicht ** best_exp
+            )
         )
 
         return df
 
+    # --------------------------------------------------
+    # Single rider metrics
+    # --------------------------------------------------
 
-# ==================================================
-# OLD APP COMPATIBILITY
-# ==================================================
+    def get_metrics(
+        self,
+        renner_id,
+        jaar
+    ):
 
-def load_data(db_name):
+        query = """
 
-    db = DatabaseService(
-        db_name
-    )
+        SELECT
+            mt.naam,
+            me.waarde
 
-    return db.get_legacy_dataframe()
+        FROM metingen me
+
+        JOIN metrics mt
+            ON mt.id = me.metric_id
+
+        WHERE me.renner_id = ?
+        AND me.jaar = ?
+
+        """
+
+        with self.connect() as conn:
+
+            rows = conn.execute(
+                query,
+                (
+                    renner_id,
+                    jaar
+                )
+            ).fetchall()
+
+        return {
+
+            naam: waarde
+
+            for naam, waarde in rows
+        }
