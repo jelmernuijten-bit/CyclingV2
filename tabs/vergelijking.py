@@ -158,8 +158,8 @@ def register_callbacks(app):
 
             fig1 = scatter(
                 df,
-                "v5",
-                "v2",
+                "v300",
+                "v10",
                 name,
                 "10s * 20min",
                 "20min",
@@ -174,8 +174,8 @@ def register_callbacks(app):
 
             fig2 = scatter(
                 df,
-                "v5_kg",
-                "v2_kg",
+                "v300_kg",
+                "v10_kg",
                 name,
                 "10s * 20min (w/kg)",
                 "20min (w/kg)",
@@ -190,8 +190,8 @@ def register_callbacks(app):
 
             fig3 = scatter(
                 df,
-                "v3",
-                "v11",
+                "v1200",
+                "v60",
                 name,
                 "1min * 1min na 21kJ",
                 "1min",
@@ -206,8 +206,8 @@ def register_callbacks(app):
 
             fig4 = scatter(
                 df,
-                "v3_kg",
-                "v11_kg",
+                "v1200_kg",
+                "v60_kg",
                 name,
                 "1min * 1min na 21kJ (w/kg)",
                 "1min (w/kg)",
