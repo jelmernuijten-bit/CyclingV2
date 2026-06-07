@@ -6,20 +6,25 @@ from flask import request
 import base64
 import requests
 
+
 # =========================================
 # CURRENT USER
 # =========================================
 
 def get_current_user():
 
-    auth_header = request.headers.get("Authorization")
+    auth_header = request.headers.get(
+        "Authorization"
+    )
 
     if not auth_header:
         return None
 
     try:
 
-        auth_type, credentials = auth_header.split()
+        auth_type, credentials = (
+            auth_header.split()
+        )
 
         if auth_type.lower() != "basic":
             return None
@@ -28,12 +33,17 @@ def get_current_user():
             credentials
         ).decode("utf-8")
 
-        username, password = decoded.split(":", 1)
+        username, _ = decoded.split(
+            ":",
+            1
+        )
 
         return username
 
-    except:
+    except Exception:
+
         return None
+
 
 # =========================================
 # LOAD SEG RIDERS
@@ -61,8 +71,6 @@ def load_seg_riders(db_name=None):
             if line.strip()
         ]
 
-        print("SEG riders:", riders)
-
         return riders
 
     except Exception as e:
@@ -74,6 +82,7 @@ def load_seg_riders(db_name=None):
 
         return []
 
+
 # =========================================
 # SAFE FLOAT
 # =========================================
@@ -83,8 +92,9 @@ def safe_float(x):
     try:
         return float(x)
 
-    except:
+    except Exception:
         return np.nan
+
 
 # =========================================
 # PARSE DUUR
@@ -95,16 +105,12 @@ def parse_duur(x):
     try:
         return float(x)
 
-    except:
+    except Exception:
 
         try:
 
             parts = str(x).split(":")
             parts = [float(p) for p in parts]
-
-            # =========================================
-            # HH:MM:SS
-            # =========================================
 
             if len(parts) == 3:
 
@@ -114,10 +120,6 @@ def parse_duur(x):
                     parts[2]
                 )
 
-            # =========================================
-            # UREN:MINUTEN
-            # =========================================
-
             elif len(parts) == 2:
 
                 return (
@@ -125,10 +127,12 @@ def parse_duur(x):
                     parts[1] * 60
                 )
 
-        except:
+        except Exception:
+
             return np.nan
 
     return np.nan
+
 
 # =========================================
 # FIND BEST EXPONENT
@@ -136,29 +140,61 @@ def parse_duur(x):
 
 def find_best_exponent(df):
 
-    exponents = np.arange(0.30, 1.01, 0.01)
+    vo2_col = None
+    gewicht_col = None
+
+    for col in ["mVO2", "vo2"]:
+        if col in df.columns:
+            vo2_col = col
+            break
+
+    for col in ["Gewicht", "gewicht"]:
+        if col in df.columns:
+            gewicht_col = col
+            break
+
+    if vo2_col is None:
+        return 0.70
+
+    if gewicht_col is None:
+        return 0.70
+
+    exponents = np.arange(
+        0.30,
+        1.01,
+        0.01
+    )
 
     best_a = 0.7
     best_slope = 999999
 
     for a in exponents:
 
-        adjusted = df["vo2"] / (
-            df["gewicht"] ** a
+        adjusted = (
+            df[vo2_col]
+            /
+            (df[gewicht_col] ** a)
         )
 
         temp = pd.DataFrame({
-            "gewicht": df["gewicht"],
-            "adj": adjusted
+
+            "gewicht":
+                df[gewicht_col],
+
+            "adj":
+                adjusted
+
         }).dropna()
 
         if len(temp) < 3:
             continue
 
-        slope, intercept = np.polyfit(
+        slope, _ = np.polyfit(
+
             temp["gewicht"],
             temp["adj"],
             1
+
         )
 
         if abs(slope) < best_slope:
@@ -167,6 +203,7 @@ def find_best_exponent(df):
             best_a = a
 
     return round(best_a, 2)
+
 
 # =========================================
 # SCATTER
@@ -213,6 +250,7 @@ def scatter(
             .str.strip()
             .str.lower()
             .isin(allowed_clean)
+
         )
 
     else:
@@ -290,7 +328,6 @@ def scatter(
         )
 
         for trace in fig2.data:
-
             fig.add_trace(trace)
 
     # =========================================
@@ -340,11 +377,9 @@ def scatter(
     for trace in fig.data:
 
         if trace.name == "True":
-
             trace.marker.size = 14
 
         elif trace.name == "False":
-
             trace.marker.size = 8
 
     # =========================================
@@ -354,9 +389,10 @@ def scatter(
     fig.update_traces(
 
         hovertemplate=
-        "<b>%{hovertext}</b><br>" +
-        f"{xlabel}: %{{x}}<br>" +
-        f"{ylabel}: %{{y}}<extra></extra>"
+        "<b>%{hovertext}</b><br>"
+        + f"{xlabel}: %{{x}}<br>"
+        + f"{ylabel}: %{{y}}"
+        + "<extra></extra>"
     )
 
     # =========================================
@@ -470,10 +506,6 @@ def scatter(
                             f"({zscore:+.2f})</b>"
                         )
                     )
-
-    # =========================================
-    # FORMAT DUUR AXIS
-    # =========================================
 
     if x == "duur":
 
