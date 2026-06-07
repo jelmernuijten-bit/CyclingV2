@@ -4,6 +4,7 @@ import os
 import gdown
 
 from utils import safe_float
+from utils import parse_duur
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -162,6 +163,17 @@ def prepare_df(df):
         )
 
     #
+    # Duur in uren
+    #
+    if "Duur" in df.columns:
+
+        df["duur"] = (
+            df["Duur"]
+            .apply(parse_duur)
+            / 3600
+        )
+
+    #
     # FTP
     #
     if "mFTP" in df.columns:
@@ -212,10 +224,6 @@ def prepare_df(df):
             df[f"{col}_kg"] = (
                 df[col] / df["gewicht"]
             ).round(2)
-
-    # =========================================
-    # DEBUG
-    # =========================================
 
     print("CHECK KOLOMMEN")
 
