@@ -4,6 +4,11 @@ from dash.dependencies import Input, Output, State
 import sqlite3
 import pandas as pd
 
+from data_loader import (
+    DB_FILE,
+    ensure_database
+)
+
 
 def sql_editor_layout():
 
@@ -20,7 +25,8 @@ WHERE type='table';
 """,
             style={
                 "width": "100%",
-                "height": "250px"
+                "height": "250px",
+                "fontFamily": "monospace"
             }
         ),
 
@@ -28,13 +34,19 @@ WHERE type='table';
 
         html.Button(
             "Uitvoeren",
-            id="run-query-btn"
+            id="run-query-btn",
+            n_clicks=0
         ),
 
         html.Br(),
         html.Br(),
 
-        html.Div(id="sql-message"),
+        html.Div(
+            id="sql-message",
+            style={
+                "marginBottom": "10px"
+            }
+        ),
 
         html.Div(id="sql-result")
     ])
@@ -54,11 +66,14 @@ def register_sql_callbacks(app):
     def run_query(n_clicks, query):
 
         if not query:
-            return None, "Geen query ingevoerd."
+            return (
+                None,
+                "Geen query ingevoerd."
+            )
 
         q = query.strip().lower()
 
-        # Alleen veilige queries
+        # Alleen veilige read-only queries
         if not (
             q.startswith("select")
             or q.startswith("with")
@@ -66,13 +81,12 @@ def register_sql_callbacks(app):
         ):
             return (
                 None,
-                "Alleen SELECT, WITH en PRAGMA zijn toegestaan."
+                "Alleen SELECT, WITH en PRAGMA queries zijn toegestaan."
             )
 
         try:
 
-            # PAS DIT PAD AAN
-            DB_FILE = "database.db"
+            ensure_database()
 
             conn = sqlite3.connect(DB_FILE)
 
@@ -87,10 +101,10 @@ def register_sql_callbacks(app):
                 data=df.to_dict("records"),
                 columns=[
                     {
-                        "name": c,
-                        "id": c
+                        "name": col,
+                        "id": col
                     }
-                    for c in df.columns
+                    for col in df.columns
                 ],
                 page_size=25,
                 sort_action="native",
