@@ -104,9 +104,9 @@ app.layout = html.Div([
 
     dcc.RangeSlider(
         id="leeftijd",
-        min=0,
-        max=30,
-        value=[0, 30],
+        min=15,
+        max=40,
+        value=[15, 40],
 
         tooltip={
             "placement": "bottom",
