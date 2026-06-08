@@ -15,6 +15,11 @@ from tabs.rapportage import (
 
 from tabs.worksheet import worksheet_layout
 
+from tabs.sql_editor import (
+    sql_editor_layout,
+    register_sql_callbacks
+)
+
 # =========================================
 # DASH APP
 # =========================================
@@ -27,7 +32,6 @@ server = app.server
 # =========================================
 
 VALID_USERNAME_PASSWORD_PAIRS = {
-
     "Cyclinglab": "2019",
     "SEG": "Cyclinglab"
 }
@@ -68,7 +72,6 @@ def get_current_user():
         return username
 
     except:
-
         return None
 
 # =========================================
@@ -84,7 +87,6 @@ app.layout = html.Div([
     dcc.Dropdown(
         id="name",
         placeholder="Select renner",
-
         style={
             "marginBottom": "10px"
         }
@@ -94,7 +96,6 @@ app.layout = html.Div([
         id="geslacht",
         multi=True,
         placeholder="Geslacht",
-
         style={
             "marginBottom": "10px"
         }
@@ -107,7 +108,6 @@ app.layout = html.Div([
         min=15,
         max=40,
         value=[15, 40],
-
         tooltip={
             "placement": "bottom",
             "always_visible": True
@@ -121,7 +121,6 @@ app.layout = html.Div([
     # =========================================
 
     dcc.Tabs(
-
         id="main-tabs",
         value="vergelijking",
 
@@ -140,6 +139,11 @@ app.layout = html.Div([
             dcc.Tab(
                 label="Worksheet",
                 value="worksheet"
+            ),
+
+            dcc.Tab(
+                label="SQL Editor",
+                value="sql_editor"
             )
         ],
 
@@ -179,8 +183,14 @@ def render_tab(tab):
     elif tab == "worksheet":
 
         if username == "Cyclinglab":
-
             return worksheet_layout()
+
+        return html.Div()
+
+    elif tab == "sql_editor":
+
+        if username == "Cyclinglab":
+            return sql_editor_layout()
 
         return html.Div()
 
@@ -192,11 +202,11 @@ def render_tab(tab):
 
 register_callbacks(app)
 register_rapportage_callbacks(app)
+register_sql_callbacks(app)
 
 # =========================================
 # RUN
 # =========================================
 
 if __name__ == "__main__":
-
     app.run(debug=True)
