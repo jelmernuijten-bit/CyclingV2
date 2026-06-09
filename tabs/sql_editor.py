@@ -7,9 +7,11 @@ from data_loader import (
     DB_FILE,
     ensure_database
 )
+
 from google_drive_sync import (
     sync_database_to_google_drive
 )
+
 
 # =====================================================
 # HELPERS
@@ -57,6 +59,10 @@ def edit_data_layout():
 
     return html.Div([
 
+        # ======================================
+        # METRICS
+        # ======================================
+
         html.H3("Gegevens bewerken"),
 
         html.Label("Renner"),
@@ -95,21 +101,14 @@ def edit_data_layout():
             n_clicks=0
         ),
 
+        html.Br(),
+        html.Br(),
+
         html.Div(
             id="edit-message"
         ),
 
-html.Hr(),
-
-html.Button(
-    "Sync naar Google Drive",
-    id="sync-drive-btn",
-    n_clicks=0
-),
-
-html.Div(
-    id="sync-drive-message"
-)
+        html.Hr(),
 
         # ======================================
         # POWERCURVE
@@ -146,11 +145,36 @@ html.Div(
             n_clicks=0
         ),
 
+        html.Br(),
+        html.Br(),
+
         html.Div(
             id="powercurve-message"
+        ),
+
+        html.Hr(),
+
+        # ======================================
+        # GOOGLE DRIVE SYNC
+        # ======================================
+
+        html.H3(
+            "Database synchronisatie"
+        ),
+
+        html.Button(
+            "Sync naar Google Drive",
+            id="sync-drive-btn",
+            n_clicks=0
+        ),
+
+        html.Br(),
+        html.Br(),
+
+        html.Div(
+            id="sync-drive-message"
         )
     ])
-
 
 # =====================================================
 # CALLBACKS
@@ -317,7 +341,8 @@ def register_edit_callbacks(app):
                 "overflowX": "auto"
             }
         )
-            # ======================================
+
+    # ======================================
     # METRICS OPSLAAN
     # ======================================
 
@@ -542,13 +567,13 @@ def register_edit_callbacks(app):
             columns=rename_map
         )
 
-        columns = []
-
-        columns.append({
-            "name": "Fatigue (kJ)",
-            "id": "fatigue_kj",
-            "editable": False
-        })
+        columns = [
+            {
+                "name": "Fatigue (kJ)",
+                "id": "fatigue_kj",
+                "editable": False
+            }
+        ]
 
         for originele in originele_kolommen:
 
@@ -745,3 +770,40 @@ def register_edit_callbacks(app):
         return (
             f"{wijzigingen} powercurve wijziging(en) opgeslagen."
         )
+
+    # ======================================
+    # GOOGLE DRIVE SYNC
+    # ======================================
+
+    @app.callback(
+        Output(
+            "sync-drive-message",
+            "children"
+        ),
+        Input(
+            "sync-drive-btn",
+            "n_clicks"
+        ),
+        prevent_initial_call=True
+    )
+    def sync_drive(
+        n_clicks
+    ):
+
+        try:
+
+            sync_database_to_google_drive(
+                str(DB_FILE)
+            )
+
+            return (
+                "Database succesvol "
+                "gesynchroniseerd "
+                "naar Google Drive."
+            )
+
+        except Exception as e:
+
+            return (
+                f"Fout: {str(e)}"
+            )
