@@ -7,7 +7,9 @@ from data_loader import (
     DB_FILE,
     ensure_database
 )
-
+from google_drive_sync import (
+    sync_database_to_google_drive
+)
 
 # =====================================================
 # HELPERS
