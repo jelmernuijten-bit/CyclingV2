@@ -190,7 +190,7 @@ def render_tab(tab):
     elif tab == "sql_editor":
 
         if username == "Cyclinglab":
-            return sql_editor_layout()
+            return edit_data_layout()
 
         return html.Div()
 
@@ -202,7 +202,7 @@ def render_tab(tab):
 
 register_callbacks(app)
 register_rapportage_callbacks(app)
-register_sql_callbacks(app)
+register_edit_callbacks(app)
 
 # =========================================
 # RUN
