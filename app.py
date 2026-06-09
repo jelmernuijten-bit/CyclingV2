@@ -16,8 +16,8 @@ from tabs.rapportage import (
 from tabs.worksheet import worksheet_layout
 
 from tabs.sql_editor import (
-    sql_editor_layout,
-    register_sql_callbacks
+    edit_data_layout,
+    register_edit_callbacks
 )
 
 # =========================================
