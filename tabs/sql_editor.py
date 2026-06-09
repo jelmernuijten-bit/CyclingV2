@@ -99,7 +99,17 @@ def edit_data_layout():
             id="edit-message"
         ),
 
-        html.Hr(),
+html.Hr(),
+
+html.Button(
+    "Sync naar Google Drive",
+    id="sync-drive-btn",
+    n_clicks=0
+),
+
+html.Div(
+    id="sync-drive-message"
+)
 
         # ======================================
         # POWERCURVE
