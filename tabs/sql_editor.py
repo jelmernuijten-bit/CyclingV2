@@ -13,27 +13,18 @@ def edit_data_layout():
 
     ensure_database()
 
-    conn = sqlite3.connect(DB_FILE)
+    with sqlite3.connect(DB_FILE) as conn:
 
-    renners = pd.read_sql_query(
-        """
-        SELECT id, naam
-        FROM renners
-        ORDER BY naam
-        """,
-        conn
-    )
-
-    jaren = pd.read_sql_query(
-        """
-        SELECT DISTINCT jaar
-        FROM metingen
-        ORDER BY jaar DESC
-        """,
-        conn
-    )
-
-    conn.close()
+        renners = pd.read_sql_query(
+            """
+            SELECT
+                id,
+                naam
+            FROM renners
+            ORDER BY naam
+            """,
+            conn
+        )
 
     return html.Div([
 
@@ -54,21 +45,6 @@ def edit_data_layout():
 
         html.Br(),
 
-        html.Label("Jaar"),
-
-        dcc.Dropdown(
-            id="edit-year",
-            options=[
-                {
-                    "label": str(row["jaar"]),
-                    "value": row["jaar"]
-                }
-                for _, row in jaren.iterrows()
-            ]
-        ),
-
-        html.Br(),
-
         html.Button(
             "Laden",
             id="load-metrics-btn",
@@ -78,7 +54,9 @@ def edit_data_layout():
         html.Br(),
         html.Br(),
 
-        html.Div(id="edit-table-container"),
+        html.Div(
+            id="edit-table-container"
+        ),
 
         html.Br(),
 
@@ -91,7 +69,9 @@ def edit_data_layout():
         html.Br(),
         html.Br(),
 
-        html.Div(id="edit-message")
+        html.Div(
+            id="edit-message"
+        )
     ])
 
 
@@ -110,75 +90,92 @@ def register_edit_callbacks(app):
             "edit-runner",
             "value"
         ),
-        State(
-            "edit-year",
-            "value"
-        ),
         prevent_initial_call=True
     )
     def load_metrics(
         n_clicks,
-        renner_id,
-        jaar
+        renner_id
     ):
 
-        if not renner_id or not jaar:
+        if not renner_id:
             return html.Div(
-                "Selecteer een renner en jaar."
+                "Selecteer een renner."
             )
 
-        conn = sqlite3.connect(DB_FILE)
+        with sqlite3.connect(DB_FILE) as conn:
 
-        df = pd.read_sql_query(
-            """
-            SELECT
-                metrics.id AS metric_id,
-                metrics.naam AS metric,
-                metingen.waarde
-            FROM metingen
+            df = pd.read_sql_query(
+                """
+                SELECT
+                    metrics.id AS metric_id,
+                    metrics.naam AS metric,
+                    metingen.jaar,
+                    metingen.waarde
+                FROM metingen
 
-            JOIN metrics
-                ON metrics.id = metingen.metric_id
+                JOIN metrics
+                    ON metrics.id = metingen.metric_id
 
-            WHERE metingen.renner_id = ?
-              AND metingen.jaar = ?
+                WHERE metingen.renner_id = ?
 
-            ORDER BY metrics.naam
-            """,
-            conn,
-            params=(
-                renner_id,
-                jaar
+                ORDER BY
+                    metrics.naam,
+                    metingen.jaar
+                """,
+                conn,
+                params=(renner_id,)
             )
+
+        if df.empty:
+            return html.Div(
+                "Geen gegevens gevonden."
+            )
+
+        metric_lookup = (
+            df[
+                ["metric_id", "metric"]
+            ]
+            .drop_duplicates()
         )
 
-        conn.close()
+        pivot_df = (
+            df.pivot(
+                index="metric",
+                columns="jaar",
+                values="waarde"
+            )
+            .reset_index()
+        )
+
+        pivot_df = pivot_df.merge(
+            metric_lookup,
+            on="metric",
+            how="left"
+        )
+
+        kolommen = []
+
+        for col in pivot_df.columns:
+
+            kolommen.append({
+                "name": str(col),
+                "id": str(col),
+                "editable": (
+                    col not in [
+                        "metric",
+                        "metric_id"
+                    ]
+                )
+            })
 
         return dash_table.DataTable(
             id="edit-table",
 
-            data=df.to_dict(
+            data=pivot_df.to_dict(
                 "records"
             ),
 
-            columns=[
-                {
-                    "name": "metric_id",
-                    "id": "metric_id",
-                    "editable": False
-                },
-                {
-                    "name": "Metric",
-                    "id": "metric",
-                    "editable": False
-                },
-                {
-                    "name": "Waarde",
-                    "id": "waarde",
-                    "editable": True,
-                    "type": "numeric"
-                }
-            ],
+            columns=kolommen,
 
             hidden_columns=[
                 "metric_id"
@@ -207,10 +204,6 @@ def register_edit_callbacks(app):
             "value"
         ),
         State(
-            "edit-year",
-            "value"
-        ),
-        State(
             "edit-table",
             "data"
         ),
@@ -219,12 +212,13 @@ def register_edit_callbacks(app):
     def save_metrics(
         n_clicks,
         renner_id,
-        jaar,
         rows
     ):
 
         if not rows:
-            return "Geen gegevens geladen."
+            return (
+                "Geen gegevens geladen."
+            )
 
         conn = sqlite3.connect(DB_FILE)
 
@@ -234,76 +228,92 @@ def register_edit_callbacks(app):
 
         for row in rows:
 
-            metric_id = row["metric_id"]
-            nieuwe_waarde = row["waarde"]
+            metric_id = row[
+                "metric_id"
+            ]
 
-            oud = cursor.execute(
-                """
-                SELECT waarde
-                FROM metingen
-                WHERE renner_id = ?
-                  AND jaar = ?
-                  AND metric_id = ?
-                """,
-                (
-                    renner_id,
-                    jaar,
-                    metric_id
+            metric_naam = row[
+                "metric"
+            ]
+
+            for key, value in row.items():
+
+                if key in [
+                    "metric",
+                    "metric_id"
+                ]:
+                    continue
+
+                try:
+                    jaar = int(key)
+                except:
+                    continue
+
+                oud = cursor.execute(
+                    """
+                    SELECT waarde
+                    FROM metingen
+                    WHERE renner_id = ?
+                      AND jaar = ?
+                      AND metric_id = ?
+                    """,
+                    (
+                        renner_id,
+                        jaar,
+                        metric_id
+                    )
+                ).fetchone()
+
+                oude_waarde = (
+                    oud[0]
+                    if oud
+                    else None
                 )
-            ).fetchone()
 
-            oude_waarde = (
-                oud[0]
-                if oud
-                else None
-            )
+                if oude_waarde == value:
+                    continue
 
-            if oude_waarde == nieuwe_waarde:
-                continue
-
-            cursor.execute(
-                """
-                UPDATE metingen
-                SET waarde = ?
-                WHERE renner_id = ?
-                  AND jaar = ?
-                  AND metric_id = ?
-                """,
-                (
-                    nieuwe_waarde,
-                    renner_id,
-                    jaar,
-                    metric_id
+                cursor.execute(
+                    """
+                    UPDATE metingen
+                    SET waarde = ?
+                    WHERE renner_id = ?
+                      AND jaar = ?
+                      AND metric_id = ?
+                    """,
+                    (
+                        value,
+                        renner_id,
+                        jaar,
+                        metric_id
+                    )
                 )
-            )
 
-            metric_naam = row["metric"]
-
-            cursor.execute(
-                """
-                INSERT INTO wijzigingslog
-                (
-                    renner_id,
-                    jaar,
-                    tabel,
-                    sleutel,
-                    oude_waarde,
-                    nieuwe_waarde
+                cursor.execute(
+                    """
+                    INSERT INTO wijzigingslog
+                    (
+                        renner_id,
+                        jaar,
+                        tabel,
+                        sleutel,
+                        oude_waarde,
+                        nieuwe_waarde
+                    )
+                    VALUES
+                    (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        renner_id,
+                        jaar,
+                        "metingen",
+                        metric_naam,
+                        str(oude_waarde),
+                        str(value)
+                    )
                 )
-                VALUES
-                (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    renner_id,
-                    jaar,
-                    "metingen",
-                    metric_naam,
-                    str(oude_waarde),
-                    str(nieuwe_waarde)
-                )
-            )
 
-            wijzigingen += 1
+                wijzigingen += 1
 
         conn.commit()
         conn.close()
